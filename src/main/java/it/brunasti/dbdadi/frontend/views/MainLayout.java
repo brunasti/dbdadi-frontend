@@ -40,6 +40,7 @@ public class MainLayout extends AppLayout {
 
         nav.addItem(new SideNavItem("Dashboard", DashboardView.class, VaadinIcon.DASHBOARD.create()));
         nav.addItem(new SideNavItem("Database Models", DatabaseModelView.class, VaadinIcon.DATABASE.create()));
+        nav.addItem(new SideNavItem("Schemas", SchemaDefinitionView.class, VaadinIcon.BOOK.create()));
         nav.addItem(new SideNavItem("Tables", TableDefinitionView.class, VaadinIcon.TABLE.create()));
         nav.addItem(new SideNavItem("Columns", ColumnDefinitionView.class, VaadinIcon.RECORDS.create()));
         nav.addItem(new SideNavItem("Relationships", RelationshipDefinitionView.class, VaadinIcon.CONNECT.create()));

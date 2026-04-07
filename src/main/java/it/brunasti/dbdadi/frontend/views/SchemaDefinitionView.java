@@ -16,28 +16,28 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import it.brunasti.dbdadi.frontend.client.DatabaseModelClient;
 import it.brunasti.dbdadi.frontend.client.SchemaDefinitionClient;
-import it.brunasti.dbdadi.frontend.client.TableDefinitionClient;
+import it.brunasti.dbdadi.frontend.dto.DatabaseModelDto;
 import it.brunasti.dbdadi.frontend.dto.SchemaDefinitionDto;
-import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
-@Route(value = "tables", layout = MainLayout.class)
-@PageTitle("Tables | dbdadi")
+@Route(value = "schemas", layout = MainLayout.class)
+@PageTitle("Schemas | dbdadi")
 @AnonymousAllowed
 @Slf4j
-public class TableDefinitionView extends VerticalLayout {
+public class SchemaDefinitionView extends VerticalLayout {
 
-    private final TableDefinitionClient client;
-    private final SchemaDefinitionClient schemaClient;
-    private final Grid<TableDefinitionDto> grid = new Grid<>(TableDefinitionDto.class, false);
-    private final ComboBox<SchemaDefinitionDto> schemaFilter = new ComboBox<>("Filter by Schema");
+    private final SchemaDefinitionClient client;
+    private final DatabaseModelClient dbModelClient;
+    private final Grid<SchemaDefinitionDto> grid = new Grid<>(SchemaDefinitionDto.class, false);
+    private final ComboBox<DatabaseModelDto> modelFilter = new ComboBox<>("Filter by Database Model");
 
-    public TableDefinitionView(TableDefinitionClient client, SchemaDefinitionClient schemaClient) {
+    public SchemaDefinitionView(SchemaDefinitionClient client, DatabaseModelClient dbModelClient) {
         this.client = client;
-        this.schemaClient = schemaClient;
+        this.dbModelClient = dbModelClient;
         setSizeFull();
         configureGrid();
         configureFilter();
@@ -46,23 +46,22 @@ public class TableDefinitionView extends VerticalLayout {
     }
 
     private void configureFilter() {
-        schemaFilter.setItemLabelGenerator(s -> s.getDatabaseModelName() + " / " + s.getName());
-        schemaFilter.setClearButtonVisible(true);
+        modelFilter.setItemLabelGenerator(DatabaseModelDto::getName);
+        modelFilter.setClearButtonVisible(true);
         try {
-            schemaFilter.setItems(schemaClient.findAll());
+            modelFilter.setItems(dbModelClient.findAll());
         } catch (Exception e) {
-            log.warn("Could not load schemas for filter");
+            log.warn("Could not load database models for filter");
         }
-        schemaFilter.addValueChangeListener(e -> refresh());
+        modelFilter.addValueChangeListener(e -> refresh());
     }
 
     private void configureGrid() {
         grid.setSizeFull();
-        grid.addColumn(TableDefinitionDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0);
-        grid.addColumn(TableDefinitionDto::getName).setHeader("Table Name").setSortable(true);
-        grid.addColumn(TableDefinitionDto::getSchemaName).setHeader("Schema").setSortable(true);
-        grid.addColumn(TableDefinitionDto::getDatabaseModelName).setHeader("Database Model").setSortable(true);
-        grid.addColumn(TableDefinitionDto::getDescription).setHeader("Description");
+        grid.addColumn(SchemaDefinitionDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0);
+        grid.addColumn(SchemaDefinitionDto::getName).setHeader("Schema Name").setSortable(true);
+        grid.addColumn(SchemaDefinitionDto::getDatabaseModelName).setHeader("Database Model").setSortable(true);
+        grid.addColumn(SchemaDefinitionDto::getDescription).setHeader("Description");
         grid.addComponentColumn(item -> {
             Button edit = new Button("Edit", e -> openDialog(item));
             edit.addThemeVariants(ButtonVariant.LUMO_SMALL);
@@ -73,48 +72,48 @@ public class TableDefinitionView extends VerticalLayout {
     }
 
     private HorizontalLayout createToolbar() {
-        Button addBtn = new Button("New Table", e -> openDialog(null));
+        Button addBtn = new Button("New Schema", e -> openDialog(null));
         addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         Button refreshBtn = new Button("Refresh", e -> refresh());
-        return new HorizontalLayout(addBtn, refreshBtn, schemaFilter);
+        return new HorizontalLayout(addBtn, refreshBtn, modelFilter);
     }
 
-    private void openDialog(TableDefinitionDto item) {
+    private void openDialog(SchemaDefinitionDto item) {
         Dialog dialog = new Dialog();
-        dialog.setHeaderTitle(item == null ? "New Table" : "Edit Table");
+        dialog.setHeaderTitle(item == null ? "New Schema" : "Edit Schema");
         dialog.setWidth("500px");
 
-        ComboBox<SchemaDefinitionDto> schema = new ComboBox<>("Schema");
-        schema.setItemLabelGenerator(s -> s.getDatabaseModelName() + " / " + s.getName());
+        ComboBox<DatabaseModelDto> dbModel = new ComboBox<>("Database Model");
+        dbModel.setItemLabelGenerator(DatabaseModelDto::getName);
         try {
-            schema.setItems(schemaClient.findAll());
+            dbModel.setItems(dbModelClient.findAll());
         } catch (Exception e) {
-            log.warn("Could not load schemas");
+            log.warn("Could not load database models");
         }
-        TextField name = new TextField("Table Name");
+        TextField name = new TextField("Schema Name");
         TextArea description = new TextArea("Description");
 
         if (item != null) {
             name.setValue(item.getName() != null ? item.getName() : "");
             description.setValue(item.getDescription() != null ? item.getDescription() : "");
-            if (item.getSchemaId() != null) {
-                schemaClient.findAll().stream()
-                        .filter(s -> s.getId().equals(item.getSchemaId()))
+            if (item.getDatabaseModelId() != null) {
+                dbModelClient.findAll().stream()
+                        .filter(m -> m.getId().equals(item.getDatabaseModelId()))
                         .findFirst()
-                        .ifPresent(schema::setValue);
+                        .ifPresent(dbModel::setValue);
             }
         }
 
-        FormLayout form = new FormLayout(schema, name, description);
-        form.setColspan(schema, 2);
+        FormLayout form = new FormLayout(dbModel, name, description);
+        form.setColspan(dbModel, 2);
         form.setColspan(description, 2);
 
         Button save = new Button("Save", e -> {
             try {
-                TableDefinitionDto dto = TableDefinitionDto.builder()
+                SchemaDefinitionDto dto = SchemaDefinitionDto.builder()
                         .name(name.getValue())
                         .description(description.getValue())
-                        .schemaId(schema.getValue() != null ? schema.getValue().getId() : null)
+                        .databaseModelId(dbModel.getValue() != null ? dbModel.getValue().getId() : null)
                         .build();
                 if (item == null) {
                     client.create(dto);
@@ -137,10 +136,10 @@ public class TableDefinitionView extends VerticalLayout {
         dialog.open();
     }
 
-    private void confirmDelete(TableDefinitionDto item) {
+    private void confirmDelete(SchemaDefinitionDto item) {
         ConfirmDialog confirm = new ConfirmDialog(
-                "Delete table \"" + item.getName() + "\"?",
-                "This will also delete all columns in this table.",
+                "Delete schema \"" + item.getName() + "\"?",
+                "This will also delete all tables and columns in this schema.",
                 "Delete", e -> {
                     try {
                         client.delete(item.getId());
@@ -158,16 +157,16 @@ public class TableDefinitionView extends VerticalLayout {
 
     private void refresh() {
         try {
-            List<TableDefinitionDto> items;
-            SchemaDefinitionDto selected = schemaFilter.getValue();
+            List<SchemaDefinitionDto> items;
+            DatabaseModelDto selected = modelFilter.getValue();
             if (selected != null) {
-                items = client.findBySchema(selected.getId());
+                items = client.findByDatabaseModel(selected.getId());
             } else {
                 items = client.findAll();
             }
             grid.setItems(items);
         } catch (Exception e) {
-            log.error("Failed to load tables", e);
+            log.error("Failed to load schemas", e);
             notify("Could not load data: " + e.getMessage(), true);
         }
     }
