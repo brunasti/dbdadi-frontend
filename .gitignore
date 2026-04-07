@@ -35,6 +35,8 @@ pnpm-lock.yaml
 pnpmfile.js
 .pnpmfile.cjs
 vite.generated.ts
+src/main/frontend/generated/
+src/main/frontend/index.html
 
 # Logs
 *.log
