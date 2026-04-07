@@ -1,0 +1,45 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# VS Code
+.vscode/
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vaadin
+node_modules/
+package-lock.json
+webpack.config.js
+webpack.generated.js
+pnpm-lock.yaml
+pnpmfile.js
+.pnpmfile.cjs
+vite.generated.ts
+
+# Logs
+*.log
+logs/
+
+# Env
+.env
+application-local.properties
