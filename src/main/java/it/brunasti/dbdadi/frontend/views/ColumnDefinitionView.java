@@ -89,6 +89,16 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
     private void configureGrid() {
         grid.setSizeFull();
         grid.addColumn(ColumnDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0).setSortable(true);
+        grid.addComponentColumn(item -> {
+            Button btn = new Button(item.getTableName());
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate(
+                    TableDefinitionView.class,
+                    new QueryParameters(Map.of("schemaId",
+                            List.of(String.valueOf(item.getSchemaId()))))));
+            return btn;
+        }).setHeader("Table").setComparator(Comparator.comparing(ColumnDefinitionDto::getTableName));
         grid.addColumn(ColumnDefinitionDto::getOrdinalPosition).setHeader("#").setWidth("60px").setFlexGrow(0).setSortable(true);
         grid.addComponentColumn(item -> {
             Button nameBtn = new Button(item.getName());
@@ -103,16 +113,6 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
         grid.addColumn(ColumnDefinitionDto::getScale).setHeader("Scale").setWidth("80px").setFlexGrow(0).setSortable(true);
         grid.addColumn(ColumnDefinitionDto::getDefaultValue).setHeader("Default").setSortable(true);
         grid.addColumn(ColumnDefinitionDto::getDescription).setHeader("Description").setSortable(true);
-        grid.addComponentColumn(item -> {
-            Button btn = new Button(item.getTableName());
-            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            btn.getStyle().set("padding", "0");
-            btn.addClickListener(e -> UI.getCurrent().navigate(
-                    TableDefinitionView.class,
-                    new QueryParameters(Map.of("schemaId",
-                            List.of(String.valueOf(item.getSchemaId()))))));
-            return btn;
-        }).setHeader("Table").setComparator(Comparator.comparing(ColumnDefinitionDto::getTableName));
         grid.addComponentColumn(col -> {
             HorizontalLayout flags = new HorizontalLayout();
             if (col.isPrimaryKey()) flags.add(VaadinIcon.KEY.create());
