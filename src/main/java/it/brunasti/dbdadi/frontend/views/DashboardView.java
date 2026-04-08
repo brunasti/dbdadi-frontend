@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Route(value = "dashboard", layout = MainLayout.class)
 @RouteAlias(value = "", layout = MainLayout.class)
-@PageTitle("Dashboard | dbdadi")
+@PageTitle("DBDaDi | Dashboard")
 @AnonymousAllowed
 @Slf4j
 public class DashboardView extends VerticalLayout {

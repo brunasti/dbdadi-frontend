@@ -39,7 +39,7 @@ import java.util.List;
 import java.util.Map;
 
 @Route(value = "columns", layout = MainLayout.class)
-@PageTitle("Columns | dbdadi")
+@PageTitle("DBDaDi | Columns")
 @AnonymousAllowed
 @Slf4j
 public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterObserver {

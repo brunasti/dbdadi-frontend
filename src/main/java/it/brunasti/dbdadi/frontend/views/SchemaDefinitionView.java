@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Map;
 
 @Route(value = "schemas", layout = MainLayout.class)
-@PageTitle("Schemas | dbdadi")
+@PageTitle("DBDaDi | Schemas")
 @AnonymousAllowed
 @Slf4j
 public class SchemaDefinitionView extends VerticalLayout implements BeforeEnterObserver {

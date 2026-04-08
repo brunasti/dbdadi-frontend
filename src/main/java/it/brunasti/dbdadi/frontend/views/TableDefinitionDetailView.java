@@ -34,7 +34,7 @@ import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
 
 @Route(value = "tables/:tableId", layout = MainLayout.class)
-@PageTitle("Table | dbdadi")
+@PageTitle("DBDaDi | Table")
 @AnonymousAllowed
 @Slf4j
 public class TableDefinitionDetailView extends VerticalLayout implements BeforeEnterObserver {

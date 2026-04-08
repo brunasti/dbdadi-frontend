@@ -29,7 +29,7 @@ import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
 
 @Route(value = "database-models/:modelId", layout = MainLayout.class)
-@PageTitle("Database Model | dbdadi")
+@PageTitle("DBDaDi | Database Model")
 @AnonymousAllowed
 @Slf4j
 public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnterObserver {

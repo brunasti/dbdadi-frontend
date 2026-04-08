@@ -23,7 +23,7 @@ import it.brunasti.dbdadi.frontend.dto.JdbcImportResult;
 import lombok.extern.slf4j.Slf4j;
 
 @Route(value = "admin", layout = MainLayout.class)
-@PageTitle("Admin | dbdadi")
+@PageTitle("DBDaDi | Admin")
 @AnonymousAllowed
 @Slf4j
 public class AdminView extends VerticalLayout {

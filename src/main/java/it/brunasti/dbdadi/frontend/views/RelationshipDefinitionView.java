@@ -27,7 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 
 @Route(value = "relationships", layout = MainLayout.class)
-@PageTitle("Relationships | dbdadi")
+@PageTitle("DBDaDi | Relationships")
 @AnonymousAllowed
 @Slf4j
 public class RelationshipDefinitionView extends VerticalLayout {

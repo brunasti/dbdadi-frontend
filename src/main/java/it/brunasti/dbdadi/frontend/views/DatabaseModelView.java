@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 @Route(value = "database-models", layout = MainLayout.class)
-@PageTitle("Database Models | dbdadi")
+@PageTitle("DBDaDi | Database Models")
 @AnonymousAllowed
 @Slf4j
 public class DatabaseModelView extends VerticalLayout {

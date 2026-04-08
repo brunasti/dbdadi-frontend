@@ -29,7 +29,7 @@ public class MainLayout extends AppLayout {
         logo.setHeight("36px");
         logo.getStyle().set("margin-right", "8px");
 
-        H1 title = new H1("dbdadi");
+        H1 title = new H1("DBDaDi");
         title.getStyle()
                 .set("font-size", "var(--lumo-font-size-l)")
                 .set("margin", "0");

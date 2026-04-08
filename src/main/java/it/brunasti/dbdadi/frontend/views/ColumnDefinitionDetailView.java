@@ -25,7 +25,7 @@ import it.brunasti.dbdadi.frontend.dto.ColumnDefinitionDto;
 import lombok.extern.slf4j.Slf4j;
 
 @Route(value = "columns/:columnId", layout = MainLayout.class)
-@PageTitle("Column | dbdadi")
+@PageTitle("DBDaDi | Column")
 @AnonymousAllowed
 @Slf4j
 public class ColumnDefinitionDetailView extends VerticalLayout implements BeforeEnterObserver {

@@ -29,7 +29,7 @@ import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
 
 @Route(value = "schemas/:schemaId", layout = MainLayout.class)
-@PageTitle("Schema | dbdadi")
+@PageTitle("DBDaDi | Schema")
 @AnonymousAllowed
 @Slf4j
 public class SchemaDefinitionDetailView extends VerticalLayout implements BeforeEnterObserver {

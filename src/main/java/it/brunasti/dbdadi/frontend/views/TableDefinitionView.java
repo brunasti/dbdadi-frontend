@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 @Route(value = "tables", layout = MainLayout.class)
-@PageTitle("Tables | dbdadi")
+@PageTitle("DBDaDi | Tables")
 @AnonymousAllowed
 @Slf4j
 public class TableDefinitionView extends VerticalLayout implements BeforeEnterObserver {
