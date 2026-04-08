@@ -1,5 +1,6 @@
 package it.brunasti.dbdadi.frontend.views;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -50,10 +51,24 @@ public class RelationshipDefinitionView extends VerticalLayout {
         grid.addColumn(RelationshipDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0).setSortable(true);
         grid.addColumn(RelationshipDefinitionDto::getName).setHeader("Name").setSortable(true);
         grid.addColumn(RelationshipDefinitionDto::getType).setHeader("Type").setSortable(true);
-        grid.addColumn(r -> r.getFromTableName() + "." + r.getFromColumnName()).setHeader("From")
-                .setComparator(Comparator.comparing(r -> r.getFromTableName() + "." + r.getFromColumnName()));
-        grid.addColumn(r -> r.getToTableName() + "." + r.getToColumnName()).setHeader("To")
-                .setComparator(Comparator.comparing(r -> r.getToTableName() + "." + r.getToColumnName()));
+        grid.addComponentColumn(r -> {
+            String label = r.getFromTableName() + "." + r.getFromColumnName();
+            if (r.getFromColumnId() != null) {
+                Button link = new Button(label, e -> UI.getCurrent().navigate("columns/" + r.getFromColumnId()));
+                link.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+                return link;
+            }
+            return new Button(label);
+        }).setHeader("From").setComparator(Comparator.comparing(r -> r.getFromTableName() + "." + r.getFromColumnName()));
+        grid.addComponentColumn(r -> {
+            String label = r.getToTableName() + "." + r.getToColumnName();
+            if (r.getToColumnId() != null) {
+                Button link = new Button(label, e -> UI.getCurrent().navigate("columns/" + r.getToColumnId()));
+                link.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+                return link;
+            }
+            return new Button(label);
+        }).setHeader("To").setComparator(Comparator.comparing(r -> r.getToTableName() + "." + r.getToColumnName()));
         grid.addColumn(RelationshipDefinitionDto::getDescription).setHeader("Description").setSortable(true);
         grid.addComponentColumn(item -> {
             Button edit = new Button("Edit", e -> openDialog(item));

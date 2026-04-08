@@ -19,9 +19,11 @@ public class RelationshipDefinitionDto {
     private Long fromTableId;
     private String fromTableName;
     private String fromColumnName;
+    private Long fromColumnId;
     private Long toTableId;
     private String toTableName;
     private String toColumnName;
+    private Long toColumnId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
