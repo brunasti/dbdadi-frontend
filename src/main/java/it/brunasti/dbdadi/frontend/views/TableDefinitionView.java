@@ -21,8 +21,10 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import it.brunasti.dbdadi.frontend.client.DatabaseModelClient;
 import it.brunasti.dbdadi.frontend.client.SchemaDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.TableDefinitionClient;
+import it.brunasti.dbdadi.frontend.dto.DatabaseModelDto;
 import it.brunasti.dbdadi.frontend.dto.SchemaDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
 import java.util.Comparator;
@@ -39,16 +41,20 @@ public class TableDefinitionView extends VerticalLayout implements BeforeEnterOb
 
     private final TableDefinitionClient client;
     private final SchemaDefinitionClient schemaClient;
+    private final DatabaseModelClient dbModelClient;
     private final Grid<TableDefinitionDto> grid = new Grid<>(TableDefinitionDto.class, false);
+    private final ComboBox<DatabaseModelDto> dbModelFilter = new ComboBox<>("Filter by Database Model");
     private final ComboBox<SchemaDefinitionDto> schemaFilter = new ComboBox<>("Filter by Schema");
     private final HorizontalLayout breadcrumb = new HorizontalLayout();
 
-    public TableDefinitionView(TableDefinitionClient client, SchemaDefinitionClient schemaClient) {
+    public TableDefinitionView(TableDefinitionClient client, SchemaDefinitionClient schemaClient,
+                                DatabaseModelClient dbModelClient) {
         this.client = client;
         this.schemaClient = schemaClient;
+        this.dbModelClient = dbModelClient;
         setSizeFull();
         configureGrid();
-        configureFilter();
+        configureFilters();
         breadcrumb.setVisible(false);
         add(breadcrumb, createToolbar(), grid);
     }
@@ -60,6 +66,9 @@ public class TableDefinitionView extends VerticalLayout implements BeforeEnterOb
                 .ifPresent(id -> {
                     try {
                         SchemaDefinitionDto schema = schemaClient.findById(id);
+                        // pre-select cascading filters without triggering intermediate refreshes
+                        schemaFilter.setItems(schemaClient.findByDatabaseModel(schema.getDatabaseModelId()));
+                        dbModelFilter.setValue(dbModelClient.findById(schema.getDatabaseModelId()));
                         schemaFilter.setValue(schema);
                         showBreadcrumb(schema);
                     } catch (Exception e) {
@@ -69,11 +78,31 @@ public class TableDefinitionView extends VerticalLayout implements BeforeEnterOb
         refresh();
     }
 
-    private void configureFilter() {
-        schemaFilter.setItemLabelGenerator(s -> s.getDatabaseModelName() + " / " + s.getName());
+    private void configureFilters() {
+        dbModelFilter.setItemLabelGenerator(DatabaseModelDto::getName);
+        dbModelFilter.setClearButtonVisible(true);
+        try { dbModelFilter.setItems(dbModelClient.findAll()); }
+        catch (Exception e) { log.warn("Could not load database models for filter"); }
+
+        schemaFilter.setItemLabelGenerator(SchemaDefinitionDto::getName);
         schemaFilter.setClearButtonVisible(true);
-        try { schemaFilter.setItems(schemaClient.findAll()); }
-        catch (Exception e) { log.warn("Could not load schemas for filter"); }
+        schemaFilter.setEnabled(false);
+
+        dbModelFilter.addValueChangeListener(e -> {
+            schemaFilter.clear();
+            DatabaseModelDto model = e.getValue();
+            if (model != null) {
+                try { schemaFilter.setItems(schemaClient.findByDatabaseModel(model.getId())); }
+                catch (Exception ex) { log.warn("Could not load schemas for model {}", model.getId()); }
+                schemaFilter.setEnabled(true);
+            } else {
+                schemaFilter.setItems();
+                schemaFilter.setEnabled(false);
+            }
+            updateBreadcrumb();
+            refresh();
+        });
+
         schemaFilter.addValueChangeListener(e -> {
             updateBreadcrumb();
             refresh();
@@ -115,23 +144,20 @@ public class TableDefinitionView extends VerticalLayout implements BeforeEnterOb
         Button addBtn = new Button("New Table", e -> openDialog(null));
         addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         Button refreshBtn = new Button("Refresh", e -> refresh());
-        return new HorizontalLayout(addBtn, refreshBtn, schemaFilter);
+        return new HorizontalLayout(addBtn, refreshBtn, dbModelFilter, schemaFilter);
     }
 
     private void showBreadcrumb(SchemaDefinitionDto schema) {
         breadcrumb.removeAll();
-        // Back to schemas of the same model
         Button backToModel = new Button("← Database Models");
         backToModel.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
         backToModel.addClickListener(e -> UI.getCurrent().navigate(DatabaseModelView.class));
-
         Button backToSchemas = new Button("Schemas of: " + schema.getDatabaseModelName());
         backToSchemas.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
         backToSchemas.addClickListener(e -> UI.getCurrent().navigate(
                 SchemaDefinitionView.class,
                 new QueryParameters(Map.of("databaseModelId",
                         List.of(String.valueOf(schema.getDatabaseModelId()))))));
-
         breadcrumb.add(backToModel, new Span(" / "), backToSchemas,
                 new Span(" / "), new Span("Tables of: " + schema.getName()));
         breadcrumb.setAlignItems(Alignment.CENTER);
@@ -210,10 +236,13 @@ public class TableDefinitionView extends VerticalLayout implements BeforeEnterOb
 
     private void refresh() {
         try {
-            SchemaDefinitionDto selected = schemaFilter.getValue();
-            grid.setItems(selected != null
-                    ? client.findBySchema(selected.getId())
-                    : client.findAll());
+            SchemaDefinitionDto selectedSchema = schemaFilter.getValue();
+            DatabaseModelDto selectedModel = dbModelFilter.getValue();
+            grid.setItems(selectedSchema != null
+                    ? client.findBySchema(selectedSchema.getId())
+                    : selectedModel != null
+                        ? client.findByDatabaseModel(selectedModel.getId())
+                        : client.findAll());
         } catch (Exception e) {
             notify("Could not load data: " + e.getMessage(), true);
         }

@@ -29,6 +29,20 @@ public class ColumnDefinitionClient {
                 .body(new ParameterizedTypeReference<>() {});
     }
 
+    public List<ColumnDefinitionDto> findBySchema(Long schemaId) {
+        return restClient.get()
+                .uri(BASE_PATH + "?schemaId={id}", schemaId)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+    }
+
+    public List<ColumnDefinitionDto> findByDatabaseModel(Long databaseModelId) {
+        return restClient.get()
+                .uri(BASE_PATH + "?databaseModelId={id}", databaseModelId)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+    }
+
     public ColumnDefinitionDto findById(Long id) {
         return restClient.get()
                 .uri(BASE_PATH + "/{id}", id)

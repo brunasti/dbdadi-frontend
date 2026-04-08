@@ -25,8 +25,12 @@ import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import it.brunasti.dbdadi.frontend.client.ColumnDefinitionClient;
+import it.brunasti.dbdadi.frontend.client.DatabaseModelClient;
+import it.brunasti.dbdadi.frontend.client.SchemaDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.TableDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.ColumnDefinitionDto;
+import it.brunasti.dbdadi.frontend.dto.DatabaseModelDto;
+import it.brunasti.dbdadi.frontend.dto.SchemaDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
 import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
@@ -42,16 +46,24 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
 
     private final ColumnDefinitionClient client;
     private final TableDefinitionClient tableClient;
+    private final SchemaDefinitionClient schemaClient;
+    private final DatabaseModelClient dbModelClient;
+
     private final Grid<ColumnDefinitionDto> grid = new Grid<>(ColumnDefinitionDto.class, false);
+    private final ComboBox<DatabaseModelDto> dbModelFilter = new ComboBox<>("Filter by Database Model");
+    private final ComboBox<SchemaDefinitionDto> schemaFilter = new ComboBox<>("Filter by Schema");
     private final ComboBox<TableDefinitionDto> tableFilter = new ComboBox<>("Filter by Table");
     private final HorizontalLayout breadcrumb = new HorizontalLayout();
 
-    public ColumnDefinitionView(ColumnDefinitionClient client, TableDefinitionClient tableClient) {
+    public ColumnDefinitionView(ColumnDefinitionClient client, TableDefinitionClient tableClient,
+                                 SchemaDefinitionClient schemaClient, DatabaseModelClient dbModelClient) {
         this.client = client;
         this.tableClient = tableClient;
+        this.schemaClient = schemaClient;
+        this.dbModelClient = dbModelClient;
         setSizeFull();
         configureGrid();
-        configureFilter();
+        configureFilters();
         breadcrumb.setVisible(false);
         add(breadcrumb, createToolbar(), grid);
     }
@@ -63,6 +75,11 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
                 .ifPresent(id -> {
                     try {
                         TableDefinitionDto table = tableClient.findById(id);
+                        // pre-select cascading filters without triggering intermediate refreshes
+                        schemaFilter.setItems(schemaClient.findByDatabaseModel(table.getDatabaseModelId()));
+                        tableFilter.setItems(tableClient.findBySchema(table.getSchemaId()));
+                        dbModelFilter.setValue(dbModelClient.findById(table.getDatabaseModelId()));
+                        schemaFilter.setValue(schemaClient.findById(table.getSchemaId()));
                         tableFilter.setValue(table);
                         showBreadcrumb(table);
                     } catch (Exception e) {
@@ -72,14 +89,53 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
         refresh();
     }
 
-    private void configureFilter() {
-        tableFilter.setItemLabelGenerator(t -> t.getDatabaseModelName() + " / " + t.getSchemaName() + " / " + t.getName());
+    private void configureFilters() {
+        dbModelFilter.setItemLabelGenerator(DatabaseModelDto::getName);
+        dbModelFilter.setClearButtonVisible(true);
+        try { dbModelFilter.setItems(dbModelClient.findAll()); }
+        catch (Exception e) { log.warn("Could not load database models for filter"); }
+
+        schemaFilter.setItemLabelGenerator(SchemaDefinitionDto::getName);
+        schemaFilter.setClearButtonVisible(true);
+        schemaFilter.setEnabled(false);
+
+        tableFilter.setItemLabelGenerator(TableDefinitionDto::getName);
         tableFilter.setClearButtonVisible(true);
-        try {
-            tableFilter.setItems(tableClient.findAll());
-        } catch (Exception e) {
-            log.warn("Could not load tables for filter");
-        }
+        tableFilter.setEnabled(false);
+
+        dbModelFilter.addValueChangeListener(e -> {
+            schemaFilter.clear();
+            tableFilter.clear();
+            DatabaseModelDto model = e.getValue();
+            if (model != null) {
+                try { schemaFilter.setItems(schemaClient.findByDatabaseModel(model.getId())); }
+                catch (Exception ex) { log.warn("Could not load schemas for model {}", model.getId()); }
+                schemaFilter.setEnabled(true);
+            } else {
+                schemaFilter.setItems();
+                schemaFilter.setEnabled(false);
+                tableFilter.setItems();
+                tableFilter.setEnabled(false);
+            }
+            updateBreadcrumb();
+            refresh();
+        });
+
+        schemaFilter.addValueChangeListener(e -> {
+            tableFilter.clear();
+            SchemaDefinitionDto schema = e.getValue();
+            if (schema != null) {
+                try { tableFilter.setItems(tableClient.findBySchema(schema.getId())); }
+                catch (Exception ex) { log.warn("Could not load tables for schema {}", schema.getId()); }
+                tableFilter.setEnabled(true);
+            } else {
+                tableFilter.setItems();
+                tableFilter.setEnabled(false);
+            }
+            updateBreadcrumb();
+            refresh();
+        });
+
         tableFilter.addValueChangeListener(e -> {
             updateBreadcrumb();
             refresh();
@@ -147,30 +203,26 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
         Button addBtn = new Button("New Column", e -> openDialog(null));
         addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         Button refreshBtn = new Button("Refresh", e -> refresh());
-        return new HorizontalLayout(addBtn, refreshBtn, tableFilter);
+        return new HorizontalLayout(addBtn, refreshBtn, dbModelFilter, schemaFilter, tableFilter);
     }
 
     private void showBreadcrumb(TableDefinitionDto table) {
         breadcrumb.removeAll();
-
         Button backToModels = new Button("← Database Models");
         backToModels.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
         backToModels.addClickListener(e -> UI.getCurrent().navigate(DatabaseModelView.class));
-
         Button backToSchemas = new Button("Schemas of: " + table.getDatabaseModelName());
         backToSchemas.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
         backToSchemas.addClickListener(e -> UI.getCurrent().navigate(
                 SchemaDefinitionView.class,
                 new QueryParameters(Map.of("databaseModelId",
                         List.of(String.valueOf(table.getDatabaseModelId()))))));
-
         Button backToTables = new Button("Tables of: " + table.getSchemaName());
         backToTables.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
         backToTables.addClickListener(e -> UI.getCurrent().navigate(
                 TableDefinitionView.class,
                 new QueryParameters(Map.of("schemaId",
                         List.of(String.valueOf(table.getSchemaId()))))));
-
         breadcrumb.add(backToModels, new Span(" / "), backToSchemas,
                 new Span(" / "), backToTables,
                 new Span(" / "), new Span("Columns of: " + table.getName()));
@@ -179,9 +231,28 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
     }
 
     private void updateBreadcrumb() {
-        TableDefinitionDto selected = tableFilter.getValue();
-        if (selected != null) showBreadcrumb(selected);
+        TableDefinitionDto table = tableFilter.getValue();
+        if (table != null) showBreadcrumb(table);
         else breadcrumb.setVisible(false);
+    }
+
+    private void refresh() {
+        try {
+            List<ColumnDefinitionDto> items;
+            if (tableFilter.getValue() != null) {
+                items = client.findByTable(tableFilter.getValue().getId());
+            } else if (schemaFilter.getValue() != null) {
+                items = client.findBySchema(schemaFilter.getValue().getId());
+            } else if (dbModelFilter.getValue() != null) {
+                items = client.findByDatabaseModel(dbModelFilter.getValue().getId());
+            } else {
+                items = client.findAll();
+            }
+            grid.setItems(items);
+        } catch (Exception e) {
+            log.error("Failed to load columns", e);
+            notify("Could not load data: " + e.getMessage(), true);
+        }
     }
 
     private void openDialog(ColumnDefinitionDto item) {
@@ -191,11 +262,9 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
 
         ComboBox<TableDefinitionDto> table = new ComboBox<>("Table");
         table.setItemLabelGenerator(t -> t.getDatabaseModelName() + " / " + t.getSchemaName() + " / " + t.getName());
-        try {
-            table.setItems(tableClient.findAll());
-        } catch (Exception e) {
-            log.warn("Could not load tables");
-        }
+        try { table.setItems(tableClient.findAll()); }
+        catch (Exception e) { log.warn("Could not load tables"); }
+
         TextField name = new TextField("Column Name");
         TextField dataType = new TextField("Data Type");
         IntegerField length = new IntegerField("Length");
@@ -223,8 +292,7 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
             if (item.getTableId() != null) {
                 tableClient.findAll().stream()
                         .filter(t -> t.getId().equals(item.getTableId()))
-                        .findFirst()
-                        .ifPresent(table::setValue);
+                        .findFirst().ifPresent(table::setValue);
             }
         } else {
             nullable.setValue(true);
@@ -240,24 +308,16 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
         Button save = new Button("Save", e -> {
             try {
                 ColumnDefinitionDto dto = ColumnDefinitionDto.builder()
-                        .name(name.getValue())
-                        .description(description.getValue())
-                        .dataType(dataType.getValue())
-                        .length(length.getValue())
-                        .precision(precision.getValue())
-                        .scale(scale.getValue())
-                        .ordinalPosition(ordinal.getValue())
-                        .defaultValue(defaultValue.getValue())
-                        .nullable(nullable.getValue())
-                        .primaryKey(primaryKey.getValue())
+                        .name(name.getValue()).description(description.getValue())
+                        .dataType(dataType.getValue()).length(length.getValue())
+                        .precision(precision.getValue()).scale(scale.getValue())
+                        .ordinalPosition(ordinal.getValue()).defaultValue(defaultValue.getValue())
+                        .nullable(nullable.getValue()).primaryKey(primaryKey.getValue())
                         .unique(unique.getValue())
                         .tableId(table.getValue() != null ? table.getValue().getId() : null)
                         .build();
-                if (item == null) {
-                    client.create(dto);
-                } else {
-                    client.update(item.getId(), dto);
-                }
+                if (item == null) client.create(dto);
+                else client.update(item.getId(), dto);
                 dialog.close();
                 refresh();
                 notify("Saved successfully", false);
@@ -268,7 +328,6 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
         });
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         Button cancel = new Button("Cancel", e -> dialog.close());
-
         dialog.add(form);
         dialog.getFooter().add(cancel, save);
         dialog.open();
@@ -287,26 +346,9 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
                         notify("Delete failed: " + ex.getMessage(), true);
                     }
                 },
-                "Cancel", e -> {}
-        );
+                "Cancel", e -> {});
         confirm.setConfirmButtonTheme("error primary");
         confirm.open();
-    }
-
-    private void refresh() {
-        try {
-            List<ColumnDefinitionDto> items;
-            TableDefinitionDto selected = tableFilter.getValue();
-            if (selected != null) {
-                items = client.findByTable(selected.getId());
-            } else {
-                items = client.findAll();
-            }
-            grid.setItems(items);
-        } catch (Exception e) {
-            log.error("Failed to load columns", e);
-            notify("Could not load data: " + e.getMessage(), true);
-        }
     }
 
     private void notify(String message, boolean error) {
