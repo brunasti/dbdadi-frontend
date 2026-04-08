@@ -11,13 +11,10 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.router.Layout;
-import com.vaadin.flow.server.PWA;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 @Layout
 @AnonymousAllowed
-@PWA(name = "dbdadi - DB Data Dictionary", shortName = "dbdadi",
-     iconPath = "icons/dbdadi-icon.png")
 public class MainLayout extends AppLayout {
 
     public MainLayout() {
