@@ -25,6 +25,7 @@ import it.brunasti.dbdadi.frontend.client.DatabaseModelClient;
 import it.brunasti.dbdadi.frontend.client.SchemaDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.DatabaseModelDto;
 import it.brunasti.dbdadi.frontend.dto.SchemaDefinitionDto;
+import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
@@ -81,22 +82,22 @@ public class SchemaDefinitionView extends VerticalLayout implements BeforeEnterO
 
     private void configureGrid() {
         grid.setSizeFull();
-        grid.addColumn(SchemaDefinitionDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0);
+        grid.addColumn(SchemaDefinitionDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0).setSortable(true);
         grid.addComponentColumn(item -> {
             Button btn = new Button(item.getDatabaseModelName());
             btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             btn.getStyle().set("padding", "0");
             btn.addClickListener(e -> UI.getCurrent().navigate(DatabaseModelView.class));
             return btn;
-        }).setHeader("Database Model").setSortable(false);
+        }).setHeader("Database Model").setComparator(Comparator.comparing(SchemaDefinitionDto::getDatabaseModelName));
         grid.addComponentColumn(item -> {
             Button nameBtn = new Button(item.getName());
             nameBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             nameBtn.getStyle().set("padding", "0").set("font-weight", "bold");
             nameBtn.addClickListener(e -> UI.getCurrent().navigate("schemas/" + item.getId()));
             return nameBtn;
-        }).setHeader("Name").setSortable(false);
-        grid.addColumn(SchemaDefinitionDto::getDescription).setHeader("Description");
+        }).setHeader("Name").setComparator(Comparator.comparing(SchemaDefinitionDto::getName));
+        grid.addColumn(SchemaDefinitionDto::getDescription).setHeader("Description").setSortable(true);
         grid.addComponentColumn(item -> {
             Button edit = new Button("Edit", e -> openDialog(item));
             edit.addThemeVariants(ButtonVariant.LUMO_SMALL);

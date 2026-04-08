@@ -28,6 +28,7 @@ import it.brunasti.dbdadi.frontend.client.ColumnDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.TableDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.ColumnDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
+import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
@@ -87,21 +88,21 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
 
     private void configureGrid() {
         grid.setSizeFull();
-        grid.addColumn(ColumnDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0);
-        grid.addColumn(ColumnDefinitionDto::getOrdinalPosition).setHeader("#").setWidth("60px").setFlexGrow(0);
+        grid.addColumn(ColumnDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0).setSortable(true);
+        grid.addColumn(ColumnDefinitionDto::getOrdinalPosition).setHeader("#").setWidth("60px").setFlexGrow(0).setSortable(true);
         grid.addComponentColumn(item -> {
             Button nameBtn = new Button(item.getName());
             nameBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             nameBtn.getStyle().set("padding", "0").set("font-weight", "bold");
             nameBtn.addClickListener(e -> UI.getCurrent().navigate("columns/" + item.getId()));
             return nameBtn;
-        }).setHeader("Column Name").setSortable(false);
-        grid.addColumn(ColumnDefinitionDto::getDataType).setHeader("Data Type");
-        grid.addColumn(ColumnDefinitionDto::getLength).setHeader("Length").setWidth("80px").setFlexGrow(0);
-        grid.addColumn(ColumnDefinitionDto::getPrecision).setHeader("Precision").setWidth("90px").setFlexGrow(0);
-        grid.addColumn(ColumnDefinitionDto::getScale).setHeader("Scale").setWidth("80px").setFlexGrow(0);
-        grid.addColumn(ColumnDefinitionDto::getDefaultValue).setHeader("Default");
-        grid.addColumn(ColumnDefinitionDto::getDescription).setHeader("Description");
+        }).setHeader("Column Name").setComparator(Comparator.comparing(ColumnDefinitionDto::getName));
+        grid.addColumn(ColumnDefinitionDto::getDataType).setHeader("Data Type").setSortable(true);
+        grid.addColumn(ColumnDefinitionDto::getLength).setHeader("Length").setWidth("80px").setFlexGrow(0).setSortable(true);
+        grid.addColumn(ColumnDefinitionDto::getPrecision).setHeader("Precision").setWidth("90px").setFlexGrow(0).setSortable(true);
+        grid.addColumn(ColumnDefinitionDto::getScale).setHeader("Scale").setWidth("80px").setFlexGrow(0).setSortable(true);
+        grid.addColumn(ColumnDefinitionDto::getDefaultValue).setHeader("Default").setSortable(true);
+        grid.addColumn(ColumnDefinitionDto::getDescription).setHeader("Description").setSortable(true);
         grid.addComponentColumn(item -> {
             Button btn = new Button(item.getTableName());
             btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
@@ -111,7 +112,7 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
                     new QueryParameters(Map.of("schemaId",
                             List.of(String.valueOf(item.getSchemaId()))))));
             return btn;
-        }).setHeader("Table").setSortable(false);
+        }).setHeader("Table").setComparator(Comparator.comparing(ColumnDefinitionDto::getTableName));
         grid.addComponentColumn(col -> {
             HorizontalLayout flags = new HorizontalLayout();
             if (col.isPrimaryKey()) flags.add(VaadinIcon.KEY.create());

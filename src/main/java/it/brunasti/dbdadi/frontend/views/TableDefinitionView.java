@@ -25,6 +25,7 @@ import it.brunasti.dbdadi.frontend.client.SchemaDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.TableDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.SchemaDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
+import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
@@ -81,14 +82,14 @@ public class TableDefinitionView extends VerticalLayout implements BeforeEnterOb
 
     private void configureGrid() {
         grid.setSizeFull();
-        grid.addColumn(TableDefinitionDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0);
+        grid.addColumn(TableDefinitionDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0).setSortable(true);
         grid.addComponentColumn(item -> {
             Button nameBtn = new Button(item.getName());
             nameBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             nameBtn.getStyle().set("padding", "0").set("font-weight", "bold");
             nameBtn.addClickListener(e -> UI.getCurrent().navigate("tables/" + item.getId()));
             return nameBtn;
-        }).setHeader("Name").setSortable(false);
+        }).setHeader("Name").setComparator(Comparator.comparing(TableDefinitionDto::getName));
         grid.addComponentColumn(item -> {
             Button btn = new Button(item.getSchemaName());
             btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
@@ -98,9 +99,9 @@ public class TableDefinitionView extends VerticalLayout implements BeforeEnterOb
                     new QueryParameters(Map.of("databaseModelId",
                             List.of(String.valueOf(item.getDatabaseModelId()))))));
             return btn;
-        }).setHeader("Schema").setSortable(false);
+        }).setHeader("Schema").setComparator(Comparator.comparing(TableDefinitionDto::getSchemaName));
         grid.addColumn(TableDefinitionDto::getDatabaseModelName).setHeader("Database Model").setSortable(true);
-        grid.addColumn(TableDefinitionDto::getDescription).setHeader("Description");
+        grid.addColumn(TableDefinitionDto::getDescription).setHeader("Description").setSortable(true);
         grid.addComponentColumn(item -> {
             Button edit = new Button("Edit", e -> openDialog(item));
             edit.addThemeVariants(ButtonVariant.LUMO_SMALL);

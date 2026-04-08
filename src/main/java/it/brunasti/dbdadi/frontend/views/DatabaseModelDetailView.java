@@ -25,6 +25,7 @@ import it.brunasti.dbdadi.frontend.client.DatabaseModelClient;
 import it.brunasti.dbdadi.frontend.client.SchemaDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.DatabaseModelDto;
 import it.brunasti.dbdadi.frontend.dto.SchemaDefinitionDto;
+import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
 
 @Route(value = "database-models/:modelId", layout = MainLayout.class)
@@ -105,15 +106,15 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
     }
 
     private void configureGrid() {
-        schemasGrid.addColumn(SchemaDefinitionDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0);
+        schemasGrid.addColumn(SchemaDefinitionDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0).setSortable(true);
         schemasGrid.addComponentColumn(item -> {
             Button btn = new Button(item.getName());
             btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             btn.getStyle().set("padding", "0").set("font-weight", "bold");
             btn.addClickListener(e -> UI.getCurrent().navigate("schemas/" + item.getId()));
             return btn;
-        }).setHeader("Name");
-        schemasGrid.addColumn(SchemaDefinitionDto::getDescription).setHeader("Description");
+        }).setHeader("Name").setComparator(Comparator.comparing(SchemaDefinitionDto::getName));
+        schemasGrid.addColumn(SchemaDefinitionDto::getDescription).setHeader("Description").setSortable(true);
         schemasGrid.addComponentColumn(item -> {
             Button edit = new Button("Edit", e -> openEditSchemaDialog(item));
             edit.addThemeVariants(ButtonVariant.LUMO_SMALL);

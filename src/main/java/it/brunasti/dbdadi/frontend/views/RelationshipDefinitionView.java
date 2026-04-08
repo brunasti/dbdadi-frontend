@@ -21,6 +21,7 @@ import it.brunasti.dbdadi.frontend.client.TableDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.RelationshipDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.RelationshipType;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
+import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
@@ -46,12 +47,14 @@ public class RelationshipDefinitionView extends VerticalLayout {
 
     private void configureGrid() {
         grid.setSizeFull();
-        grid.addColumn(RelationshipDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0);
+        grid.addColumn(RelationshipDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0).setSortable(true);
         grid.addColumn(RelationshipDefinitionDto::getName).setHeader("Name").setSortable(true);
-        grid.addColumn(RelationshipDefinitionDto::getType).setHeader("Type");
-        grid.addColumn(r -> r.getFromTableName() + "." + r.getFromColumnName()).setHeader("From");
-        grid.addColumn(r -> r.getToTableName() + "." + r.getToColumnName()).setHeader("To");
-        grid.addColumn(RelationshipDefinitionDto::getDescription).setHeader("Description");
+        grid.addColumn(RelationshipDefinitionDto::getType).setHeader("Type").setSortable(true);
+        grid.addColumn(r -> r.getFromTableName() + "." + r.getFromColumnName()).setHeader("From")
+                .setComparator(Comparator.comparing(r -> r.getFromTableName() + "." + r.getFromColumnName()));
+        grid.addColumn(r -> r.getToTableName() + "." + r.getToColumnName()).setHeader("To")
+                .setComparator(Comparator.comparing(r -> r.getToTableName() + "." + r.getToColumnName()));
+        grid.addColumn(RelationshipDefinitionDto::getDescription).setHeader("Description").setSortable(true);
         grid.addComponentColumn(item -> {
             Button edit = new Button("Edit", e -> openDialog(item));
             edit.addThemeVariants(ButtonVariant.LUMO_SMALL);

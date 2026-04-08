@@ -21,6 +21,7 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 import it.brunasti.dbdadi.frontend.client.DatabaseModelClient;
 import it.brunasti.dbdadi.frontend.dto.DatabaseModelDto;
 import it.brunasti.dbdadi.frontend.dto.DbType;
+import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
@@ -45,17 +46,17 @@ public class DatabaseModelView extends VerticalLayout {
 
     private void configureGrid() {
         grid.setSizeFull();
-        grid.addColumn(DatabaseModelDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0);
+        grid.addColumn(DatabaseModelDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0).setSortable(true);
         grid.addComponentColumn(item -> {
             Button nameBtn = new Button(item.getName());
             nameBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             nameBtn.getStyle().set("padding", "0").set("font-weight", "bold");
             nameBtn.addClickListener(e -> UI.getCurrent().navigate("database-models/" + item.getId()));
             return nameBtn;
-        }).setHeader("Name").setSortable(false);
+        }).setHeader("Name").setComparator(Comparator.comparing(DatabaseModelDto::getName));
         grid.addColumn(DatabaseModelDto::getDbType).setHeader("DB Type").setSortable(true);
-        grid.addColumn(DatabaseModelDto::getVersion).setHeader("Version");
-        grid.addColumn(DatabaseModelDto::getDescription).setHeader("Description");
+        grid.addColumn(DatabaseModelDto::getVersion).setHeader("Version").setSortable(true);
+        grid.addColumn(DatabaseModelDto::getDescription).setHeader("Description").setSortable(true);
         grid.addComponentColumn(item -> {
             Button edit = new Button("Edit", e -> openDialog(item));
             edit.addThemeVariants(ButtonVariant.LUMO_SMALL);

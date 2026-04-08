@@ -25,6 +25,7 @@ import it.brunasti.dbdadi.frontend.client.SchemaDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.TableDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.SchemaDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
+import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
 
 @Route(value = "schemas/:schemaId", layout = MainLayout.class)
@@ -106,15 +107,15 @@ public class SchemaDefinitionDetailView extends VerticalLayout implements Before
     }
 
     private void configureGrid() {
-        tablesGrid.addColumn(TableDefinitionDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0);
+        tablesGrid.addColumn(TableDefinitionDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0).setSortable(true);
         tablesGrid.addComponentColumn(item -> {
             Button btn = new Button(item.getName());
             btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             btn.getStyle().set("padding", "0").set("font-weight", "bold");
             btn.addClickListener(e -> UI.getCurrent().navigate("tables/" + item.getId()));
             return btn;
-        }).setHeader("Name");
-        tablesGrid.addColumn(TableDefinitionDto::getDescription).setHeader("Description");
+        }).setHeader("Name").setComparator(Comparator.comparing(TableDefinitionDto::getName));
+        tablesGrid.addColumn(TableDefinitionDto::getDescription).setHeader("Description").setSortable(true);
         tablesGrid.addComponentColumn(item -> {
             Button edit = new Button("Edit", e -> openEditTableDialog(item));
             edit.addThemeVariants(ButtonVariant.LUMO_SMALL);
