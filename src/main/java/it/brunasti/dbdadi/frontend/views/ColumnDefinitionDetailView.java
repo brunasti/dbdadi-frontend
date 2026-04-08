@@ -28,6 +28,7 @@ import it.brunasti.dbdadi.frontend.dto.ColumnDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.RelationshipDefinitionDto;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Route(value = "columns/:columnId", layout = MainLayout.class)
@@ -158,8 +159,14 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
 
         Grid<RelationshipDefinitionDto> fromGrid = new Grid<>(RelationshipDefinitionDto.class, false);
         fromGrid.addColumn(RelationshipDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0);
-        fromGrid.addColumn(RelationshipDefinitionDto::getName).setHeader("Name").setSortable(true);
-        fromGrid.addColumn(RelationshipDefinitionDto::getType).setHeader("Type").setSortable(true);
+        fromGrid.addComponentColumn(r -> {
+            Button btn = new Button(r.getName());
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0").set("font-weight", "bold");
+            btn.addClickListener(e -> UI.getCurrent().navigate("relationships/" + r.getId()));
+            return btn;
+        }).setHeader("Name").setComparator(Comparator.comparing(RelationshipDefinitionDto::getName));
+        fromGrid.addColumn(r -> r.getType() != null ? r.getType().name() : "").setHeader("Type").setSortable(true);
         fromGrid.addColumn(r -> r.getToTableName() + "." + r.getToColumnName()).setHeader("To").setSortable(true);
         fromGrid.addColumn(RelationshipDefinitionDto::getDescription).setHeader("Description");
         fromGrid.setItems(fromRels);
@@ -167,8 +174,14 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
 
         Grid<RelationshipDefinitionDto> toGrid = new Grid<>(RelationshipDefinitionDto.class, false);
         toGrid.addColumn(RelationshipDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0);
-        toGrid.addColumn(RelationshipDefinitionDto::getName).setHeader("Name").setSortable(true);
-        toGrid.addColumn(RelationshipDefinitionDto::getType).setHeader("Type").setSortable(true);
+        toGrid.addComponentColumn(r -> {
+            Button btn = new Button(r.getName());
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0").set("font-weight", "bold");
+            btn.addClickListener(e -> UI.getCurrent().navigate("relationships/" + r.getId()));
+            return btn;
+        }).setHeader("Name").setComparator(Comparator.comparing(RelationshipDefinitionDto::getName));
+        toGrid.addColumn(r -> r.getType() != null ? r.getType().name() : "").setHeader("Type").setSortable(true);
         toGrid.addColumn(r -> r.getFromTableName() + "." + r.getFromColumnName()).setHeader("From").setSortable(true);
         toGrid.addColumn(RelationshipDefinitionDto::getDescription).setHeader("Description");
         toGrid.setItems(toRels);
