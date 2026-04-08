@@ -7,6 +7,8 @@ import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
+import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -21,8 +23,12 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import it.brunasti.dbdadi.frontend.client.ColumnDefinitionClient;
+import it.brunasti.dbdadi.frontend.client.RelationshipDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.ColumnDefinitionDto;
+import it.brunasti.dbdadi.frontend.dto.RelationshipDefinitionDto;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
 
 @Route(value = "columns/:columnId", layout = MainLayout.class)
 @PageTitle("DBDaDi | Column")
@@ -31,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ColumnDefinitionDetailView extends VerticalLayout implements BeforeEnterObserver {
 
     private final ColumnDefinitionClient client;
+    private final RelationshipDefinitionClient relClient;
     private ColumnDefinitionDto column;
 
     private final TextField nameField = new TextField("Name");
@@ -45,8 +52,9 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
     private final Checkbox uniqueField = new Checkbox("Unique");
     private final TextArea descriptionField = new TextArea("Description");
 
-    public ColumnDefinitionDetailView(ColumnDefinitionClient client) {
+    public ColumnDefinitionDetailView(ColumnDefinitionClient client, RelationshipDefinitionClient relClient) {
         this.client = client;
+        this.relClient = relClient;
         setWidthFull();
         setPadding(true);
         configureFields();
@@ -130,6 +138,48 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
 
         add(form, new HorizontalLayout(editBtn, deleteBtn));
+
+        add(buildRelationshipSection());
+    }
+
+    private VerticalLayout buildRelationshipSection() {
+        List<RelationshipDefinitionDto> fromRels = List.of();
+        List<RelationshipDefinitionDto> toRels = List.of();
+        try {
+            fromRels = relClient.findByFromTable(column.getTableId()).stream()
+                    .filter(r -> column.getName().equals(r.getFromColumnName()))
+                    .toList();
+            toRels = relClient.findByToTable(column.getTableId()).stream()
+                    .filter(r -> column.getName().equals(r.getToColumnName()))
+                    .toList();
+        } catch (Exception e) {
+            log.warn("Could not load relationships for column {}", column.getId());
+        }
+
+        Grid<RelationshipDefinitionDto> fromGrid = new Grid<>(RelationshipDefinitionDto.class, false);
+        fromGrid.addColumn(RelationshipDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0);
+        fromGrid.addColumn(RelationshipDefinitionDto::getName).setHeader("Name").setSortable(true);
+        fromGrid.addColumn(RelationshipDefinitionDto::getType).setHeader("Type").setSortable(true);
+        fromGrid.addColumn(r -> r.getToTableName() + "." + r.getToColumnName()).setHeader("To").setSortable(true);
+        fromGrid.addColumn(RelationshipDefinitionDto::getDescription).setHeader("Description");
+        fromGrid.setItems(fromRels);
+        fromGrid.setAllRowsVisible(true);
+
+        Grid<RelationshipDefinitionDto> toGrid = new Grid<>(RelationshipDefinitionDto.class, false);
+        toGrid.addColumn(RelationshipDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0);
+        toGrid.addColumn(RelationshipDefinitionDto::getName).setHeader("Name").setSortable(true);
+        toGrid.addColumn(RelationshipDefinitionDto::getType).setHeader("Type").setSortable(true);
+        toGrid.addColumn(r -> r.getFromTableName() + "." + r.getFromColumnName()).setHeader("From").setSortable(true);
+        toGrid.addColumn(RelationshipDefinitionDto::getDescription).setHeader("Description");
+        toGrid.setItems(toRels);
+        toGrid.setAllRowsVisible(true);
+
+        VerticalLayout section = new VerticalLayout();
+        section.setWidthFull();
+        section.setPadding(false);
+        section.add(new H4("Relationships (as source)"), fromGrid,
+                    new H4("Relationships (as target)"), toGrid);
+        return section;
     }
 
     private void openEditDialog() {
