@@ -1,5 +1,6 @@
 package it.brunasti.dbdadi.frontend.views;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -8,6 +9,7 @@ import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -16,7 +18,10 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import it.brunasti.dbdadi.frontend.client.ColumnDefinitionClient;
@@ -26,17 +31,19 @@ import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Map;
 
 @Route(value = "columns", layout = MainLayout.class)
 @PageTitle("Columns | dbdadi")
 @AnonymousAllowed
 @Slf4j
-public class ColumnDefinitionView extends VerticalLayout {
+public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterObserver {
 
     private final ColumnDefinitionClient client;
     private final TableDefinitionClient tableClient;
     private final Grid<ColumnDefinitionDto> grid = new Grid<>(ColumnDefinitionDto.class, false);
     private final ComboBox<TableDefinitionDto> tableFilter = new ComboBox<>("Filter by Table");
+    private final HorizontalLayout breadcrumb = new HorizontalLayout();
 
     public ColumnDefinitionView(ColumnDefinitionClient client, TableDefinitionClient tableClient) {
         this.client = client;
@@ -44,29 +51,67 @@ public class ColumnDefinitionView extends VerticalLayout {
         setSizeFull();
         configureGrid();
         configureFilter();
-        add(createToolbar(), grid);
+        breadcrumb.setVisible(false);
+        add(breadcrumb, createToolbar(), grid);
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        event.getLocation().getQueryParameters().getSingleParameter("tableId")
+                .map(Long::valueOf)
+                .ifPresent(id -> {
+                    try {
+                        TableDefinitionDto table = tableClient.findById(id);
+                        tableFilter.setValue(table);
+                        showBreadcrumb(table);
+                    } catch (Exception e) {
+                        log.warn("Could not load table {}", id);
+                    }
+                });
         refresh();
     }
 
     private void configureFilter() {
-        tableFilter.setItemLabelGenerator(t -> t.getDatabaseModelName() + " / " + t.getName());
+        tableFilter.setItemLabelGenerator(t -> t.getDatabaseModelName() + " / " + t.getSchemaName() + " / " + t.getName());
         tableFilter.setClearButtonVisible(true);
         try {
             tableFilter.setItems(tableClient.findAll());
         } catch (Exception e) {
             log.warn("Could not load tables for filter");
         }
-        tableFilter.addValueChangeListener(e -> refresh());
+        tableFilter.addValueChangeListener(e -> {
+            updateBreadcrumb();
+            refresh();
+        });
     }
 
     private void configureGrid() {
         grid.setSizeFull();
         grid.addColumn(ColumnDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0);
         grid.addColumn(ColumnDefinitionDto::getOrdinalPosition).setHeader("#").setWidth("60px").setFlexGrow(0);
-        grid.addColumn(ColumnDefinitionDto::getName).setHeader("Column Name").setSortable(true);
+        grid.addComponentColumn(item -> {
+            Button nameBtn = new Button(item.getName());
+            nameBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            nameBtn.getStyle().set("padding", "0").set("font-weight", "bold");
+            nameBtn.addClickListener(e -> UI.getCurrent().navigate("columns/" + item.getId()));
+            return nameBtn;
+        }).setHeader("Column Name").setSortable(false);
         grid.addColumn(ColumnDefinitionDto::getDataType).setHeader("Data Type");
         grid.addColumn(ColumnDefinitionDto::getLength).setHeader("Length").setWidth("80px").setFlexGrow(0);
-        grid.addColumn(ColumnDefinitionDto::getTableName).setHeader("Table").setSortable(true);
+        grid.addColumn(ColumnDefinitionDto::getPrecision).setHeader("Precision").setWidth("90px").setFlexGrow(0);
+        grid.addColumn(ColumnDefinitionDto::getScale).setHeader("Scale").setWidth("80px").setFlexGrow(0);
+        grid.addColumn(ColumnDefinitionDto::getDefaultValue).setHeader("Default");
+        grid.addColumn(ColumnDefinitionDto::getDescription).setHeader("Description");
+        grid.addComponentColumn(item -> {
+            Button btn = new Button(item.getTableName());
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate(
+                    TableDefinitionView.class,
+                    new QueryParameters(Map.of("schemaId",
+                            List.of(String.valueOf(item.getSchemaId()))))));
+            return btn;
+        }).setHeader("Table").setSortable(false);
         grid.addComponentColumn(col -> {
             HorizontalLayout flags = new HorizontalLayout();
             if (col.isPrimaryKey()) flags.add(VaadinIcon.KEY.create());
@@ -90,13 +135,47 @@ public class ColumnDefinitionView extends VerticalLayout {
         return new HorizontalLayout(addBtn, refreshBtn, tableFilter);
     }
 
+    private void showBreadcrumb(TableDefinitionDto table) {
+        breadcrumb.removeAll();
+
+        Button backToModels = new Button("← Database Models");
+        backToModels.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        backToModels.addClickListener(e -> UI.getCurrent().navigate(DatabaseModelView.class));
+
+        Button backToSchemas = new Button("Schemas of: " + table.getDatabaseModelName());
+        backToSchemas.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        backToSchemas.addClickListener(e -> UI.getCurrent().navigate(
+                SchemaDefinitionView.class,
+                new QueryParameters(Map.of("databaseModelId",
+                        List.of(String.valueOf(table.getDatabaseModelId()))))));
+
+        Button backToTables = new Button("Tables of: " + table.getSchemaName());
+        backToTables.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        backToTables.addClickListener(e -> UI.getCurrent().navigate(
+                TableDefinitionView.class,
+                new QueryParameters(Map.of("schemaId",
+                        List.of(String.valueOf(table.getSchemaId()))))));
+
+        breadcrumb.add(backToModels, new Span(" / "), backToSchemas,
+                new Span(" / "), backToTables,
+                new Span(" / "), new Span("Columns of: " + table.getName()));
+        breadcrumb.setAlignItems(Alignment.CENTER);
+        breadcrumb.setVisible(true);
+    }
+
+    private void updateBreadcrumb() {
+        TableDefinitionDto selected = tableFilter.getValue();
+        if (selected != null) showBreadcrumb(selected);
+        else breadcrumb.setVisible(false);
+    }
+
     private void openDialog(ColumnDefinitionDto item) {
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle(item == null ? "New Column" : "Edit Column");
         dialog.setWidth("600px");
 
         ComboBox<TableDefinitionDto> table = new ComboBox<>("Table");
-        table.setItemLabelGenerator(t -> t.getDatabaseModelName() + " / " + t.getName());
+        table.setItemLabelGenerator(t -> t.getDatabaseModelName() + " / " + t.getSchemaName() + " / " + t.getName());
         try {
             table.setItems(tableClient.findAll());
         } catch (Exception e) {
@@ -134,6 +213,7 @@ public class ColumnDefinitionView extends VerticalLayout {
             }
         } else {
             nullable.setValue(true);
+            table.setValue(tableFilter.getValue());
         }
 
         FormLayout form = new FormLayout(table, name, dataType, length, precision, scale, ordinal,

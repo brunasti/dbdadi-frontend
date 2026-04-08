@@ -1,5 +1,6 @@
 package it.brunasti.dbdadi.frontend.views;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -14,6 +15,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import it.brunasti.dbdadi.frontend.client.DatabaseModelClient;
@@ -22,6 +24,7 @@ import it.brunasti.dbdadi.frontend.dto.DbType;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Map;
 
 @Route(value = "database-models", layout = MainLayout.class)
 @PageTitle("Database Models | dbdadi")
@@ -43,7 +46,13 @@ public class DatabaseModelView extends VerticalLayout {
     private void configureGrid() {
         grid.setSizeFull();
         grid.addColumn(DatabaseModelDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0);
-        grid.addColumn(DatabaseModelDto::getName).setHeader("Name").setSortable(true);
+        grid.addComponentColumn(item -> {
+            Button nameBtn = new Button(item.getName());
+            nameBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            nameBtn.getStyle().set("padding", "0").set("font-weight", "bold");
+            nameBtn.addClickListener(e -> UI.getCurrent().navigate("database-models/" + item.getId()));
+            return nameBtn;
+        }).setHeader("Name").setSortable(false);
         grid.addColumn(DatabaseModelDto::getDbType).setHeader("DB Type").setSortable(true);
         grid.addColumn(DatabaseModelDto::getVersion).setHeader("Version");
         grid.addColumn(DatabaseModelDto::getDescription).setHeader("Description");
@@ -87,16 +96,10 @@ public class DatabaseModelView extends VerticalLayout {
         Button save = new Button("Save", e -> {
             try {
                 DatabaseModelDto dto = DatabaseModelDto.builder()
-                        .name(name.getValue())
-                        .description(description.getValue())
-                        .dbType(dbType.getValue())
-                        .version(version.getValue())
-                        .build();
-                if (item == null) {
-                    client.create(dto);
-                } else {
-                    client.update(item.getId(), dto);
-                }
+                        .name(name.getValue()).description(description.getValue())
+                        .dbType(dbType.getValue()).version(version.getValue()).build();
+                if (item == null) client.create(dto);
+                else client.update(item.getId(), dto);
                 dialog.close();
                 refresh();
                 notify("Saved successfully", false);
@@ -107,7 +110,6 @@ public class DatabaseModelView extends VerticalLayout {
         });
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         Button cancel = new Button("Cancel", e -> dialog.close());
-
         dialog.add(form);
         dialog.getFooter().add(cancel, save);
         dialog.open();
@@ -116,30 +118,19 @@ public class DatabaseModelView extends VerticalLayout {
     private void confirmDelete(DatabaseModelDto item) {
         ConfirmDialog confirm = new ConfirmDialog(
                 "Delete \"" + item.getName() + "\"?",
-                "This will also delete all tables, columns and relationships in this model.",
+                "This will also delete all schemas, tables and columns in this model.",
                 "Delete", e -> {
-                    try {
-                        client.delete(item.getId());
-                        refresh();
-                        notify("Deleted successfully", false);
-                    } catch (Exception ex) {
-                        notify("Delete failed: " + ex.getMessage(), true);
-                    }
+                    try { client.delete(item.getId()); refresh(); notify("Deleted", false); }
+                    catch (Exception ex) { notify("Delete failed: " + ex.getMessage(), true); }
                 },
-                "Cancel", e -> {}
-        );
+                "Cancel", e -> {});
         confirm.setConfirmButtonTheme("error primary");
         confirm.open();
     }
 
     private void refresh() {
-        try {
-            List<DatabaseModelDto> items = client.findAll();
-            grid.setItems(items);
-        } catch (Exception e) {
-            log.error("Failed to load database models", e);
-            notify("Could not load data: " + e.getMessage(), true);
-        }
+        try { grid.setItems(client.findAll()); }
+        catch (Exception e) { notify("Could not load data: " + e.getMessage(), true); }
     }
 
     private void notify(String message, boolean error) {

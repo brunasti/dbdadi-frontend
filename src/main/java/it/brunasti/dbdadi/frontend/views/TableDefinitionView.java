@@ -1,5 +1,6 @@
 package it.brunasti.dbdadi.frontend.views;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -7,13 +8,17 @@ import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import it.brunasti.dbdadi.frontend.client.SchemaDefinitionClient;
@@ -23,17 +28,19 @@ import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
+import java.util.Map;
 
 @Route(value = "tables", layout = MainLayout.class)
 @PageTitle("Tables | dbdadi")
 @AnonymousAllowed
 @Slf4j
-public class TableDefinitionView extends VerticalLayout {
+public class TableDefinitionView extends VerticalLayout implements BeforeEnterObserver {
 
     private final TableDefinitionClient client;
     private final SchemaDefinitionClient schemaClient;
     private final Grid<TableDefinitionDto> grid = new Grid<>(TableDefinitionDto.class, false);
     private final ComboBox<SchemaDefinitionDto> schemaFilter = new ComboBox<>("Filter by Schema");
+    private final HorizontalLayout breadcrumb = new HorizontalLayout();
 
     public TableDefinitionView(TableDefinitionClient client, SchemaDefinitionClient schemaClient) {
         this.client = client;
@@ -41,26 +48,57 @@ public class TableDefinitionView extends VerticalLayout {
         setSizeFull();
         configureGrid();
         configureFilter();
-        add(createToolbar(), grid);
+        breadcrumb.setVisible(false);
+        add(breadcrumb, createToolbar(), grid);
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        event.getLocation().getQueryParameters().getSingleParameter("schemaId")
+                .map(Long::valueOf)
+                .ifPresent(id -> {
+                    try {
+                        SchemaDefinitionDto schema = schemaClient.findById(id);
+                        schemaFilter.setValue(schema);
+                        showBreadcrumb(schema);
+                    } catch (Exception e) {
+                        log.warn("Could not load schema {}", id);
+                    }
+                });
         refresh();
     }
 
     private void configureFilter() {
         schemaFilter.setItemLabelGenerator(s -> s.getDatabaseModelName() + " / " + s.getName());
         schemaFilter.setClearButtonVisible(true);
-        try {
-            schemaFilter.setItems(schemaClient.findAll());
-        } catch (Exception e) {
-            log.warn("Could not load schemas for filter");
-        }
-        schemaFilter.addValueChangeListener(e -> refresh());
+        try { schemaFilter.setItems(schemaClient.findAll()); }
+        catch (Exception e) { log.warn("Could not load schemas for filter"); }
+        schemaFilter.addValueChangeListener(e -> {
+            updateBreadcrumb();
+            refresh();
+        });
     }
 
     private void configureGrid() {
         grid.setSizeFull();
         grid.addColumn(TableDefinitionDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0);
-        grid.addColumn(TableDefinitionDto::getName).setHeader("Table Name").setSortable(true);
-        grid.addColumn(TableDefinitionDto::getSchemaName).setHeader("Schema").setSortable(true);
+        grid.addComponentColumn(item -> {
+            Button nameBtn = new Button(item.getName());
+            nameBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            nameBtn.getStyle().set("padding", "0").set("font-weight", "bold");
+            nameBtn.addClickListener(e -> UI.getCurrent().navigate("tables/" + item.getId()));
+            return nameBtn;
+        }).setHeader("Name").setSortable(false);
+        grid.addComponentColumn(item -> {
+            Button btn = new Button(item.getSchemaName());
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate(
+                    SchemaDefinitionView.class,
+                    new QueryParameters(Map.of("databaseModelId",
+                            List.of(String.valueOf(item.getDatabaseModelId()))))));
+            return btn;
+        }).setHeader("Schema").setSortable(false);
         grid.addColumn(TableDefinitionDto::getDatabaseModelName).setHeader("Database Model").setSortable(true);
         grid.addColumn(TableDefinitionDto::getDescription).setHeader("Description");
         grid.addComponentColumn(item -> {
@@ -79,6 +117,32 @@ public class TableDefinitionView extends VerticalLayout {
         return new HorizontalLayout(addBtn, refreshBtn, schemaFilter);
     }
 
+    private void showBreadcrumb(SchemaDefinitionDto schema) {
+        breadcrumb.removeAll();
+        // Back to schemas of the same model
+        Button backToModel = new Button("← Database Models");
+        backToModel.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        backToModel.addClickListener(e -> UI.getCurrent().navigate(DatabaseModelView.class));
+
+        Button backToSchemas = new Button("Schemas of: " + schema.getDatabaseModelName());
+        backToSchemas.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        backToSchemas.addClickListener(e -> UI.getCurrent().navigate(
+                SchemaDefinitionView.class,
+                new QueryParameters(Map.of("databaseModelId",
+                        List.of(String.valueOf(schema.getDatabaseModelId()))))));
+
+        breadcrumb.add(backToModel, new Span(" / "), backToSchemas,
+                new Span(" / "), new Span("Tables of: " + schema.getName()));
+        breadcrumb.setAlignItems(Alignment.CENTER);
+        breadcrumb.setVisible(true);
+    }
+
+    private void updateBreadcrumb() {
+        SchemaDefinitionDto selected = schemaFilter.getValue();
+        if (selected != null) showBreadcrumb(selected);
+        else breadcrumb.setVisible(false);
+    }
+
     private void openDialog(TableDefinitionDto item) {
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle(item == null ? "New Table" : "Edit Table");
@@ -86,11 +150,8 @@ public class TableDefinitionView extends VerticalLayout {
 
         ComboBox<SchemaDefinitionDto> schema = new ComboBox<>("Schema");
         schema.setItemLabelGenerator(s -> s.getDatabaseModelName() + " / " + s.getName());
-        try {
-            schema.setItems(schemaClient.findAll());
-        } catch (Exception e) {
-            log.warn("Could not load schemas");
-        }
+        try { schema.setItems(schemaClient.findAll()); }
+        catch (Exception e) { log.warn("Could not load schemas"); }
         TextField name = new TextField("Table Name");
         TextArea description = new TextArea("Description");
 
@@ -100,9 +161,10 @@ public class TableDefinitionView extends VerticalLayout {
             if (item.getSchemaId() != null) {
                 schemaClient.findAll().stream()
                         .filter(s -> s.getId().equals(item.getSchemaId()))
-                        .findFirst()
-                        .ifPresent(schema::setValue);
+                        .findFirst().ifPresent(schema::setValue);
             }
+        } else {
+            schema.setValue(schemaFilter.getValue());
         }
 
         FormLayout form = new FormLayout(schema, name, description);
@@ -112,15 +174,11 @@ public class TableDefinitionView extends VerticalLayout {
         Button save = new Button("Save", e -> {
             try {
                 TableDefinitionDto dto = TableDefinitionDto.builder()
-                        .name(name.getValue())
-                        .description(description.getValue())
+                        .name(name.getValue()).description(description.getValue())
                         .schemaId(schema.getValue() != null ? schema.getValue().getId() : null)
                         .build();
-                if (item == null) {
-                    client.create(dto);
-                } else {
-                    client.update(item.getId(), dto);
-                }
+                if (item == null) client.create(dto);
+                else client.update(item.getId(), dto);
                 dialog.close();
                 refresh();
                 notify("Saved successfully", false);
@@ -131,7 +189,6 @@ public class TableDefinitionView extends VerticalLayout {
         });
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         Button cancel = new Button("Cancel", e -> dialog.close());
-
         dialog.add(form);
         dialog.getFooter().add(cancel, save);
         dialog.open();
@@ -142,32 +199,21 @@ public class TableDefinitionView extends VerticalLayout {
                 "Delete table \"" + item.getName() + "\"?",
                 "This will also delete all columns in this table.",
                 "Delete", e -> {
-                    try {
-                        client.delete(item.getId());
-                        refresh();
-                        notify("Deleted successfully", false);
-                    } catch (Exception ex) {
-                        notify("Delete failed: " + ex.getMessage(), true);
-                    }
+                    try { client.delete(item.getId()); refresh(); notify("Deleted", false); }
+                    catch (Exception ex) { notify("Delete failed: " + ex.getMessage(), true); }
                 },
-                "Cancel", e -> {}
-        );
+                "Cancel", e -> {});
         confirm.setConfirmButtonTheme("error primary");
         confirm.open();
     }
 
     private void refresh() {
         try {
-            List<TableDefinitionDto> items;
             SchemaDefinitionDto selected = schemaFilter.getValue();
-            if (selected != null) {
-                items = client.findBySchema(selected.getId());
-            } else {
-                items = client.findAll();
-            }
-            grid.setItems(items);
+            grid.setItems(selected != null
+                    ? client.findBySchema(selected.getId())
+                    : client.findAll());
         } catch (Exception e) {
-            log.error("Failed to load tables", e);
             notify("Could not load data: " + e.getMessage(), true);
         }
     }
