@@ -5,6 +5,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
+import com.vaadin.flow.component.html.NativeLabel;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -32,10 +33,6 @@ public class RelationshipDefinitionDetailView extends VerticalLayout implements 
 
     private final TextField nameField = new TextField("Name");
     private final TextField typeField = new TextField("Type");
-    private final TextField fromTableField = new TextField("From Table");
-    private final TextField fromColumnField = new TextField("From Column");
-    private final TextField toTableField = new TextField("To Table");
-    private final TextField toColumnField = new TextField("To Column");
     private final TextArea descriptionField = new TextArea("Description");
 
     public RelationshipDefinitionDetailView(RelationshipDefinitionClient client) {
@@ -61,12 +58,28 @@ public class RelationshipDefinitionDetailView extends VerticalLayout implements 
     private void configureFields() {
         nameField.setReadOnly(true);
         typeField.setReadOnly(true);
-        fromTableField.setReadOnly(true);
-        fromColumnField.setReadOnly(true);
-        toTableField.setReadOnly(true);
-        toColumnField.setReadOnly(true);
         descriptionField.setReadOnly(true);
         descriptionField.setWidthFull();
+    }
+
+    private VerticalLayout linkField(String label, String text, String route) {
+        NativeLabel caption = new NativeLabel(label);
+        caption.getStyle()
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("font-weight", "500");
+        Button link = new Button(text);
+        link.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+        link.getStyle().set("padding", "0").set("font-size", "var(--lumo-font-size-m)");
+        if (route != null) {
+            link.addClickListener(e -> UI.getCurrent().navigate(route));
+        }
+        VerticalLayout wrapper = new VerticalLayout(caption, link);
+        wrapper.setPadding(false);
+        wrapper.setSpacing(false);
+        wrapper.getStyle().set("border-bottom", "1px solid var(--lumo-contrast-20pct)")
+                          .set("padding-bottom", "var(--lumo-space-xs)");
+        return wrapper;
     }
 
     private void populateFields() {
@@ -113,14 +126,23 @@ public class RelationshipDefinitionDetailView extends VerticalLayout implements 
 
         nameField.setValue(relationship.getName() != null ? relationship.getName() : "");
         typeField.setValue(relationship.getType() != null ? relationship.getType().name() : "");
-        fromTableField.setValue(relationship.getFromTableName() != null ? relationship.getFromTableName() : "");
-        fromColumnField.setValue(relationship.getFromColumnName() != null ? relationship.getFromColumnName() : "");
-        toTableField.setValue(relationship.getToTableName() != null ? relationship.getToTableName() : "");
-        toColumnField.setValue(relationship.getToColumnName() != null ? relationship.getToColumnName() : "");
         descriptionField.setValue(relationship.getDescription() != null ? relationship.getDescription() : "");
 
-        FormLayout form = new FormLayout(nameField, typeField, fromTableField, fromColumnField,
-                toTableField, toColumnField, descriptionField);
+        VerticalLayout fromTableLink = linkField("From Table",
+                relationship.getFromTableName() != null ? relationship.getFromTableName() : "",
+                "tables/" + relationship.getFromTableId());
+        VerticalLayout fromColumnLink = linkField("From Column",
+                relationship.getFromColumnName() != null ? relationship.getFromColumnName() : "",
+                relationship.getFromColumnId() != null ? "columns/" + relationship.getFromColumnId() : null);
+        VerticalLayout toTableLink = linkField("To Table",
+                relationship.getToTableName() != null ? relationship.getToTableName() : "",
+                "tables/" + relationship.getToTableId());
+        VerticalLayout toColumnLink = linkField("To Column",
+                relationship.getToColumnName() != null ? relationship.getToColumnName() : "",
+                relationship.getToColumnId() != null ? "columns/" + relationship.getToColumnId() : null);
+
+        FormLayout form = new FormLayout(nameField, typeField, fromTableLink, fromColumnLink,
+                toTableLink, toColumnLink, descriptionField);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 2));
         form.setColspan(descriptionField, 2);
 
