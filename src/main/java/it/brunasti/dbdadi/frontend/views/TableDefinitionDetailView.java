@@ -25,8 +25,10 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import it.brunasti.dbdadi.frontend.client.ColumnDefinitionClient;
+import it.brunasti.dbdadi.frontend.client.RelationshipDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.TableDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.ColumnDefinitionDto;
+import it.brunasti.dbdadi.frontend.dto.RelationshipDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,6 +40,7 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
 
     private final TableDefinitionClient client;
     private final ColumnDefinitionClient columnClient;
+    private final RelationshipDefinitionClient relationshipClient;
     private TableDefinitionDto table;
 
     private final TextField nameField = new TextField("Name");
@@ -45,14 +48,19 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
     private final TextField dbModelField = new TextField("Database Model");
     private final TextArea descriptionField = new TextArea("Description");
     private final Grid<ColumnDefinitionDto> columnsGrid = new Grid<>(ColumnDefinitionDto.class, false);
+    private final Grid<RelationshipDefinitionDto> outgoingGrid = new Grid<>(RelationshipDefinitionDto.class, false);
+    private final Grid<RelationshipDefinitionDto> incomingGrid = new Grid<>(RelationshipDefinitionDto.class, false);
 
-    public TableDefinitionDetailView(TableDefinitionClient client, ColumnDefinitionClient columnClient) {
+    public TableDefinitionDetailView(TableDefinitionClient client, ColumnDefinitionClient columnClient,
+                                     RelationshipDefinitionClient relationshipClient) {
         this.client = client;
         this.columnClient = columnClient;
+        this.relationshipClient = relationshipClient;
         setSizeFull();
         setPadding(true);
         configureFields();
         configureGrid();
+        configureRelationshipGrids();
     }
 
     @Override
@@ -62,6 +70,8 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
                 table = client.findById(id);
                 populateFields();
                 columnsGrid.setItems(columnClient.findByTable(id));
+                outgoingGrid.setItems(relationshipClient.findByFromTable(id));
+                incomingGrid.setItems(relationshipClient.findByToTable(id));
             } catch (Exception e) {
                 log.error("Could not load table {}", id, e);
                 notify("Could not load table", true);
@@ -114,7 +124,15 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
 
         add(form, new HorizontalLayout(editBtn, deleteBtn), new Hr(), new H3("Columns"));
         add(createAddColumnButton(), columnsGrid);
-        columnsGrid.setHeight("400px");
+        columnsGrid.setHeight("300px");
+
+        add(new Hr(), new H3("Outgoing Relationships (this table is the origin)"));
+        outgoingGrid.setHeight("200px");
+        add(outgoingGrid);
+
+        add(new Hr(), new H3("Incoming Relationships (this table is the target)"));
+        incomingGrid.setHeight("200px");
+        add(incomingGrid);
     }
 
     private void configureGrid() {
@@ -146,6 +164,35 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
             delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
             return new HorizontalLayout(edit, delete);
         }).setHeader("Actions").setWidth("160px").setFlexGrow(0);
+    }
+
+    private void configureRelationshipGrids() {
+        for (Grid<RelationshipDefinitionDto> grid : new Grid[]{outgoingGrid, incomingGrid}) {
+            grid.addColumn(RelationshipDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0);
+            grid.addColumn(RelationshipDefinitionDto::getName).setHeader("Name");
+            grid.addColumn(r -> r.getType() != null ? r.getType().name() : "").setHeader("Type").setWidth("100px").setFlexGrow(0);
+        }
+        outgoingGrid.addColumn(RelationshipDefinitionDto::getFromColumnName).setHeader("From Column");
+        outgoingGrid.addComponentColumn(item -> {
+            Button btn = new Button(item.getToTableName());
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate("tables/" + item.getToTableId()));
+            return btn;
+        }).setHeader("To Table");
+        outgoingGrid.addColumn(RelationshipDefinitionDto::getToColumnName).setHeader("To Column");
+        outgoingGrid.addColumn(RelationshipDefinitionDto::getDescription).setHeader("Description");
+
+        incomingGrid.addComponentColumn(item -> {
+            Button btn = new Button(item.getFromTableName());
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate("tables/" + item.getFromTableId()));
+            return btn;
+        }).setHeader("From Table");
+        incomingGrid.addColumn(RelationshipDefinitionDto::getFromColumnName).setHeader("From Column");
+        incomingGrid.addColumn(RelationshipDefinitionDto::getToColumnName).setHeader("To Column");
+        incomingGrid.addColumn(RelationshipDefinitionDto::getDescription).setHeader("Description");
     }
 
     private Button createAddColumnButton() {

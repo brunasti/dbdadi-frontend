@@ -22,6 +22,20 @@ public class RelationshipDefinitionClient {
                 .body(new ParameterizedTypeReference<>() {});
     }
 
+    public List<RelationshipDefinitionDto> findByFromTable(Long fromTableId) {
+        return restClient.get()
+                .uri(BASE_PATH + "?fromTableId={id}", fromTableId)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+    }
+
+    public List<RelationshipDefinitionDto> findByToTable(Long toTableId) {
+        return restClient.get()
+                .uri(BASE_PATH + "?toTableId={id}", toTableId)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+    }
+
     public List<RelationshipDefinitionDto> findByDatabaseModel(Long databaseModelId) {
         return restClient.get()
                 .uri(BASE_PATH + "?databaseModelId={id}", databaseModelId)
