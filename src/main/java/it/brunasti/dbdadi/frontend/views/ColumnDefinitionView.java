@@ -90,6 +90,20 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
         grid.setSizeFull();
         grid.addColumn(ColumnDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0).setSortable(true);
         grid.addComponentColumn(item -> {
+            Button btn = new Button(item.getDatabaseModelName());
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate("database-models/" + item.getDatabaseModelId()));
+            return btn;
+        }).setHeader("Database Model").setComparator(Comparator.comparing(ColumnDefinitionDto::getDatabaseModelName));
+        grid.addComponentColumn(item -> {
+            Button btn = new Button(item.getSchemaName());
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate("schemas/" + item.getSchemaId()));
+            return btn;
+        }).setHeader("Schema").setComparator(Comparator.comparing(ColumnDefinitionDto::getSchemaName));
+        grid.addComponentColumn(item -> {
             Button btn = new Button(item.getTableName());
             btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             btn.getStyle().set("padding", "0");
