@@ -57,7 +57,7 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
         this.client = client;
         this.columnClient = columnClient;
         this.relationshipClient = relationshipClient;
-        setSizeFull();
+        setWidthFull();
         setPadding(true);
         configureFields();
         configureGrid();
@@ -124,15 +124,15 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
 
         add(form, new HorizontalLayout(editBtn, deleteBtn), new Hr(), new H3("Columns"));
+        columnsGrid.setAllRowsVisible(true);
         add(createAddColumnButton(), columnsGrid);
-        columnsGrid.setHeight("300px");
 
         add(new Hr(), new H3("Outgoing Relationships (this table is the origin)"));
-        outgoingGrid.setHeight("200px");
+        outgoingGrid.setAllRowsVisible(true);
         add(outgoingGrid);
 
         add(new Hr(), new H3("Incoming Relationships (this table is the target)"));
-        incomingGrid.setHeight("200px");
+        incomingGrid.setAllRowsVisible(true);
         add(incomingGrid);
     }
 

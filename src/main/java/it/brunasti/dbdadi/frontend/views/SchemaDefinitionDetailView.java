@@ -46,7 +46,7 @@ public class SchemaDefinitionDetailView extends VerticalLayout implements Before
     public SchemaDefinitionDetailView(SchemaDefinitionClient client, TableDefinitionClient tableClient) {
         this.client = client;
         this.tableClient = tableClient;
-        setSizeFull();
+        setWidthFull();
         setPadding(true);
         configureFields();
         configureGrid();
@@ -102,8 +102,8 @@ public class SchemaDefinitionDetailView extends VerticalLayout implements Before
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
 
         add(form, new HorizontalLayout(editBtn, deleteBtn), new Hr(), new H3("Tables"));
+        tablesGrid.setAllRowsVisible(true);
         add(createAddTableButton(), tablesGrid);
-        tablesGrid.setHeight("400px");
     }
 
     private void configureGrid() {

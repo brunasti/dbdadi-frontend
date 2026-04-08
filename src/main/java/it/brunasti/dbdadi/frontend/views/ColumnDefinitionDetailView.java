@@ -47,7 +47,7 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
 
     public ColumnDefinitionDetailView(ColumnDefinitionClient client) {
         this.client = client;
-        setSizeFull();
+        setWidthFull();
         setPadding(true);
         configureFields();
     }

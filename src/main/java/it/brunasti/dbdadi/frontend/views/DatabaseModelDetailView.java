@@ -47,7 +47,7 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
     public DatabaseModelDetailView(DatabaseModelClient client, SchemaDefinitionClient schemaClient) {
         this.client = client;
         this.schemaClient = schemaClient;
-        setSizeFull();
+        setWidthFull();
         setPadding(true);
         configureFields();
         configureGrid();
@@ -101,8 +101,8 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
 
         add(form, new HorizontalLayout(editBtn, deleteBtn), new Hr(), new H3("Schemas"));
+        schemasGrid.setAllRowsVisible(true);
         add(createAddSchemaButton(), schemasGrid);
-        schemasGrid.setHeight("400px");
     }
 
     private void configureGrid() {
