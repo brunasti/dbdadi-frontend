@@ -10,6 +10,7 @@ import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Hr;
+import com.vaadin.flow.component.html.NativeLabel;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
@@ -51,7 +52,6 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
     private final TextField nameField = new TextField("Name");
     private final TextField schemaField = new TextField("Schema");
     private final TextField dbModelField = new TextField("Database Model");
-    private final TextField entityField = new TextField("Entity");
     private final TextArea descriptionField = new TextArea("Description");
     private final Grid<ColumnDefinitionDto> columnsGrid = new Grid<>(ColumnDefinitionDto.class, false);
     private final Grid<RelationshipDefinitionDto> outgoingGrid = new Grid<>(RelationshipDefinitionDto.class, false);
@@ -91,9 +91,35 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
         nameField.setReadOnly(true);
         schemaField.setReadOnly(true);
         dbModelField.setReadOnly(true);
-        entityField.setReadOnly(true);
         descriptionField.setReadOnly(true);
         descriptionField.setWidthFull();
+    }
+
+    private VerticalLayout entityLinkField() {
+        NativeLabel caption = new NativeLabel("Entity");
+        caption.getStyle()
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("font-weight", "500");
+        Button link;
+        if (table.getEntityId() != null) {
+            link = new Button(table.getEntityName());
+            link.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            link.getStyle().set("padding", "0").set("font-size", "var(--lumo-font-size-m)");
+            link.addClickListener(e -> UI.getCurrent().navigate("entities/" + table.getEntityId()));
+        } else {
+            link = new Button("(none)");
+            link.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            link.getStyle().set("padding", "0").set("font-size", "var(--lumo-font-size-m)")
+                    .set("color", "var(--lumo-secondary-text-color)");
+            link.setEnabled(false);
+        }
+        VerticalLayout wrapper = new VerticalLayout(caption, link);
+        wrapper.setPadding(false);
+        wrapper.setSpacing(false);
+        wrapper.getStyle().set("border-bottom", "1px solid var(--lumo-contrast-20pct)")
+                          .set("padding-bottom", "var(--lumo-space-xs)");
+        return wrapper;
     }
 
     private void populateFields() {
@@ -120,10 +146,9 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
         nameField.setValue(table.getName() != null ? table.getName() : "");
         schemaField.setValue(table.getSchemaName() != null ? table.getSchemaName() : "");
         dbModelField.setValue(table.getDatabaseModelName() != null ? table.getDatabaseModelName() : "");
-        entityField.setValue(table.getEntityName() != null ? table.getEntityName() : "(none)");
         descriptionField.setValue(table.getDescription() != null ? table.getDescription() : "");
 
-        FormLayout form = new FormLayout(nameField, schemaField, dbModelField, entityField, descriptionField);
+        FormLayout form = new FormLayout(nameField, schemaField, dbModelField, entityLinkField(), descriptionField);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
         form.setColspan(descriptionField, 3);
 
