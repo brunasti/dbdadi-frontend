@@ -178,10 +178,6 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
             return nameBtn;
         }).setHeader("Column Name").setComparator(Comparator.comparing(ColumnDefinitionDto::getName));
         grid.addColumn(ColumnDefinitionDto::getDataType).setHeader("Data Type").setSortable(true);
-        grid.addColumn(ColumnDefinitionDto::getLength).setHeader("Length").setWidth("80px").setFlexGrow(0).setSortable(true);
-        grid.addColumn(ColumnDefinitionDto::getPrecision).setHeader("Precision").setWidth("90px").setFlexGrow(0).setSortable(true);
-        grid.addColumn(ColumnDefinitionDto::getScale).setHeader("Scale").setWidth("80px").setFlexGrow(0).setSortable(true);
-        grid.addColumn(ColumnDefinitionDto::getDefaultValue).setHeader("Default").setSortable(true);
         grid.addColumn(ColumnDefinitionDto::getDescription).setHeader("Description").setSortable(true);
         grid.addComponentColumn(col -> {
             HorizontalLayout flags = new HorizontalLayout();
