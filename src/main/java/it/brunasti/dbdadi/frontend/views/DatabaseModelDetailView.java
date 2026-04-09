@@ -124,11 +124,11 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
         Button deleteBtn = new Button("Delete", e -> confirmDelete());
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
 
-        add(form, new HorizontalLayout(editBtn, deleteBtn),
-            new Hr(), new H4("Import Configuration"), importForm,
-            new Hr(), new H3("Schemas"));
+        add(form, new HorizontalLayout(editBtn, deleteBtn), new Hr(), new H3("Schemas"));
         schemasGrid.setAllRowsVisible(true);
         add(createAddSchemaButton(), schemasGrid);
+
+        add(new Hr(), new H4("Import Configuration"), importForm);
     }
 
     private void configureGrid() {
