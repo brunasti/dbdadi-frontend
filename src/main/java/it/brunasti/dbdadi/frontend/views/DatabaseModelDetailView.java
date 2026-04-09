@@ -8,6 +8,7 @@ import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.H4;
 import com.vaadin.flow.component.html.Hr;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
@@ -42,6 +43,11 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
     private final TextField dbTypeField = new TextField("DB Type");
     private final TextField versionField = new TextField("Version");
     private final TextArea descriptionField = new TextArea("Description");
+    private final TextField jdbcUrlField = new TextField("JDBC URL");
+    private final TextField usernameField = new TextField("Username");
+    private final TextField schemaPatternField = new TextField("Schema Pattern");
+    private final TextField tablePatternField = new TextField("Table Pattern");
+    private final TextField importFlagsField = new TextField("Import Flags");
     private final Grid<SchemaDefinitionDto> schemasGrid = new Grid<>(SchemaDefinitionDto.class, false);
 
     public DatabaseModelDetailView(DatabaseModelClient client, SchemaDefinitionClient schemaClient) {
@@ -73,6 +79,13 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
         versionField.setReadOnly(true);
         descriptionField.setReadOnly(true);
         descriptionField.setWidthFull();
+        jdbcUrlField.setReadOnly(true);
+        jdbcUrlField.setWidthFull();
+        usernameField.setReadOnly(true);
+        schemaPatternField.setReadOnly(true);
+        tablePatternField.setReadOnly(true);
+        importFlagsField.setReadOnly(true);
+        importFlagsField.setWidthFull();
     }
 
     private void populateFields() {
@@ -95,12 +108,25 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
         form.setColspan(descriptionField, 3);
 
+        jdbcUrlField.setValue(model.getJdbcUrl() != null ? model.getJdbcUrl() : "");
+        usernameField.setValue(model.getUsername() != null ? model.getUsername() : "");
+        schemaPatternField.setValue(model.getSchemaPattern() != null ? model.getSchemaPattern() : "");
+        tablePatternField.setValue(model.getTablePattern() != null ? model.getTablePattern() : "");
+        importFlagsField.setValue(model.getImportFlags() != null ? model.getImportFlags() : "");
+
+        FormLayout importForm = new FormLayout(jdbcUrlField, usernameField, schemaPatternField, tablePatternField, importFlagsField);
+        importForm.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 2));
+        importForm.setColspan(jdbcUrlField, 2);
+        importForm.setColspan(importFlagsField, 2);
+
         Button editBtn = new Button("Edit", e -> openEditDialog());
         editBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         Button deleteBtn = new Button("Delete", e -> confirmDelete());
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
 
-        add(form, new HorizontalLayout(editBtn, deleteBtn), new Hr(), new H3("Schemas"));
+        add(form, new HorizontalLayout(editBtn, deleteBtn),
+            new Hr(), new H4("Import Configuration"), importForm,
+            new Hr(), new H3("Schemas"));
         schemasGrid.setAllRowsVisible(true);
         add(createAddSchemaButton(), schemasGrid);
     }
@@ -133,23 +159,41 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
     private void openEditDialog() {
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle("Edit Database Model");
-        dialog.setWidth("500px");
+        dialog.setWidth("600px");
 
         TextField name = new TextField("Name");
         TextArea description = new TextArea("Description");
         TextField version = new TextField("Version");
+        TextField jdbcUrl = new TextField("JDBC URL");
+        TextField username = new TextField("Username");
+        TextField schemaPattern = new TextField("Schema Pattern");
+        TextField tablePattern = new TextField("Table Pattern");
+        TextField importFlags = new TextField("Import Flags");
+
         name.setValue(model.getName() != null ? model.getName() : "");
         description.setValue(model.getDescription() != null ? model.getDescription() : "");
         version.setValue(model.getVersion() != null ? model.getVersion() : "");
+        jdbcUrl.setValue(model.getJdbcUrl() != null ? model.getJdbcUrl() : "");
+        username.setValue(model.getUsername() != null ? model.getUsername() : "");
+        schemaPattern.setValue(model.getSchemaPattern() != null ? model.getSchemaPattern() : "");
+        tablePattern.setValue(model.getTablePattern() != null ? model.getTablePattern() : "");
+        importFlags.setValue(model.getImportFlags() != null ? model.getImportFlags() : "");
 
-        FormLayout form = new FormLayout(name, version, description);
+        FormLayout form = new FormLayout(name, version, description,
+                jdbcUrl, username, schemaPattern, tablePattern, importFlags);
+        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 2));
         form.setColspan(description, 2);
+        form.setColspan(jdbcUrl, 2);
+        form.setColspan(importFlags, 2);
 
         Button save = new Button("Save", e -> {
             try {
                 DatabaseModelDto dto = DatabaseModelDto.builder()
                         .name(name.getValue()).description(description.getValue())
-                        .dbType(model.getDbType()).version(version.getValue()).build();
+                        .dbType(model.getDbType()).version(version.getValue())
+                        .jdbcUrl(jdbcUrl.getValue()).username(username.getValue())
+                        .schemaPattern(schemaPattern.getValue()).tablePattern(tablePattern.getValue())
+                        .importFlags(importFlags.getValue()).build();
                 model = client.update(model.getId(), dto);
                 dialog.close();
                 populateFields();

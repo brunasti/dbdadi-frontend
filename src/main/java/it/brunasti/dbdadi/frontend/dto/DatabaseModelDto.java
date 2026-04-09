@@ -17,6 +17,11 @@ public class DatabaseModelDto {
     private String description;
     private DbType dbType;
     private String version;
+    private String jdbcUrl;
+    private String username;
+    private String schemaPattern;
+    private String tablePattern;
+    private String importFlags;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
