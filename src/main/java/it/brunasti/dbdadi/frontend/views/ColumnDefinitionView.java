@@ -169,7 +169,7 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
                             List.of(String.valueOf(item.getSchemaId()))))));
             return btn;
         }).setHeader("Table").setComparator(Comparator.comparing(ColumnDefinitionDto::getTableName));
-        grid.addColumn(ColumnDefinitionDto::getOrdinalPosition).setHeader("#").setWidth("60px").setFlexGrow(0).setSortable(true);
+        grid.addColumn(ColumnDefinitionDto::getOrdinalPosition).setHeader("Position").setWidth("60px").setFlexGrow(0).setSortable(true);
         grid.addComponentColumn(item -> {
             Button nameBtn = new Button(item.getName());
             nameBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
