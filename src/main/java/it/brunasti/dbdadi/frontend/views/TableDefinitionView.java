@@ -22,9 +22,11 @@ import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import it.brunasti.dbdadi.frontend.client.DatabaseModelClient;
+import it.brunasti.dbdadi.frontend.client.EntityDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.SchemaDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.TableDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.DatabaseModelDto;
+import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.SchemaDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
 import java.util.Comparator;
@@ -42,16 +44,18 @@ public class TableDefinitionView extends VerticalLayout implements BeforeEnterOb
     private final TableDefinitionClient client;
     private final SchemaDefinitionClient schemaClient;
     private final DatabaseModelClient dbModelClient;
+    private final EntityDefinitionClient entityClient;
     private final Grid<TableDefinitionDto> grid = new Grid<>(TableDefinitionDto.class, false);
     private final ComboBox<DatabaseModelDto> dbModelFilter = new ComboBox<>("Filter by Database Model");
     private final ComboBox<SchemaDefinitionDto> schemaFilter = new ComboBox<>("Filter by Schema");
     private final HorizontalLayout breadcrumb = new HorizontalLayout();
 
     public TableDefinitionView(TableDefinitionClient client, SchemaDefinitionClient schemaClient,
-                                DatabaseModelClient dbModelClient) {
+                                DatabaseModelClient dbModelClient, EntityDefinitionClient entityClient) {
         this.client = client;
         this.schemaClient = schemaClient;
         this.dbModelClient = dbModelClient;
+        this.entityClient = entityClient;
         setSizeFull();
         configureGrid();
         configureFilters();
@@ -182,6 +186,13 @@ public class TableDefinitionView extends VerticalLayout implements BeforeEnterOb
         TextField name = new TextField("Table Name");
         TextArea description = new TextArea("Description");
 
+        ComboBox<EntityDefinitionDto> entityCombo = new ComboBox<>("Entity");
+        entityCombo.setItemLabelGenerator(EntityDefinitionDto::getName);
+        entityCombo.setClearButtonVisible(true);
+        entityCombo.setPlaceholder("(none)");
+        try { entityCombo.setItems(entityClient.findAll()); }
+        catch (Exception e) { log.warn("Could not load entities"); }
+
         if (item != null) {
             name.setValue(item.getName() != null ? item.getName() : "");
             description.setValue(item.getDescription() != null ? item.getDescription() : "");
@@ -190,19 +201,25 @@ public class TableDefinitionView extends VerticalLayout implements BeforeEnterOb
                         .filter(s -> s.getId().equals(item.getSchemaId()))
                         .findFirst().ifPresent(schema::setValue);
             }
+            if (item.getEntityId() != null) {
+                entityCombo.setValue(EntityDefinitionDto.builder()
+                        .id(item.getEntityId()).name(item.getEntityName()).build());
+            }
         } else {
             schema.setValue(schemaFilter.getValue());
         }
 
-        FormLayout form = new FormLayout(schema, name, description);
+        FormLayout form = new FormLayout(schema, name, entityCombo, description);
         form.setColspan(schema, 2);
         form.setColspan(description, 2);
 
         Button save = new Button("Save", e -> {
             try {
+                EntityDefinitionDto selectedEntity = entityCombo.getValue();
                 TableDefinitionDto dto = TableDefinitionDto.builder()
                         .name(name.getValue()).description(description.getValue())
                         .schemaId(schema.getValue() != null ? schema.getValue().getId() : null)
+                        .entityId(selectedEntity != null ? selectedEntity.getId() : null)
                         .build();
                 if (item == null) client.create(dto);
                 else client.update(item.getId(), dto);
