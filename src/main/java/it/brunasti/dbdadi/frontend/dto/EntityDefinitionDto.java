@@ -11,16 +11,10 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TableDefinitionDto {
+public class EntityDefinitionDto {
     private Long id;
     private String name;
     private String description;
-    private Long schemaId;
-    private String schemaName;
-    private Long databaseModelId;
-    private String databaseModelName;
-    private Long entityId;
-    private String entityName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -50,6 +50,7 @@ public class MainLayout extends AppLayout {
         nav.addItem(new SideNavItem("Tables", TableDefinitionView.class, VaadinIcon.TABLE.create()));
         nav.addItem(new SideNavItem("Columns", ColumnDefinitionView.class, VaadinIcon.RECORDS.create()));
         nav.addItem(new SideNavItem("Relationships", RelationshipDefinitionView.class, VaadinIcon.CONNECT.create()));
+        nav.addItem(new SideNavItem("Entities", EntityDefinitionView.class, VaadinIcon.CUBES.create()));
         nav.addItem(new SideNavItem("Admin / Import", AdminView.class, VaadinIcon.UPLOAD.create()));
 
         return nav;

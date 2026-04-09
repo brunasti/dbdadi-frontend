@@ -16,6 +16,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
@@ -25,9 +26,11 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import it.brunasti.dbdadi.frontend.client.ColumnDefinitionClient;
+import it.brunasti.dbdadi.frontend.client.EntityDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.RelationshipDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.TableDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.ColumnDefinitionDto;
+import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.RelationshipDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
 import java.util.Comparator;
@@ -42,21 +45,25 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
     private final TableDefinitionClient client;
     private final ColumnDefinitionClient columnClient;
     private final RelationshipDefinitionClient relationshipClient;
+    private final EntityDefinitionClient entityClient;
     private TableDefinitionDto table;
 
     private final TextField nameField = new TextField("Name");
     private final TextField schemaField = new TextField("Schema");
     private final TextField dbModelField = new TextField("Database Model");
+    private final TextField entityField = new TextField("Entity");
     private final TextArea descriptionField = new TextArea("Description");
     private final Grid<ColumnDefinitionDto> columnsGrid = new Grid<>(ColumnDefinitionDto.class, false);
     private final Grid<RelationshipDefinitionDto> outgoingGrid = new Grid<>(RelationshipDefinitionDto.class, false);
     private final Grid<RelationshipDefinitionDto> incomingGrid = new Grid<>(RelationshipDefinitionDto.class, false);
 
     public TableDefinitionDetailView(TableDefinitionClient client, ColumnDefinitionClient columnClient,
-                                     RelationshipDefinitionClient relationshipClient) {
+                                     RelationshipDefinitionClient relationshipClient,
+                                     EntityDefinitionClient entityClient) {
         this.client = client;
         this.columnClient = columnClient;
         this.relationshipClient = relationshipClient;
+        this.entityClient = entityClient;
         setWidthFull();
         setPadding(true);
         configureFields();
@@ -84,6 +91,7 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
         nameField.setReadOnly(true);
         schemaField.setReadOnly(true);
         dbModelField.setReadOnly(true);
+        entityField.setReadOnly(true);
         descriptionField.setReadOnly(true);
         descriptionField.setWidthFull();
     }
@@ -112,9 +120,10 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
         nameField.setValue(table.getName() != null ? table.getName() : "");
         schemaField.setValue(table.getSchemaName() != null ? table.getSchemaName() : "");
         dbModelField.setValue(table.getDatabaseModelName() != null ? table.getDatabaseModelName() : "");
+        entityField.setValue(table.getEntityName() != null ? table.getEntityName() : "(none)");
         descriptionField.setValue(table.getDescription() != null ? table.getDescription() : "");
 
-        FormLayout form = new FormLayout(nameField, schemaField, dbModelField, descriptionField);
+        FormLayout form = new FormLayout(nameField, schemaField, dbModelField, entityField, descriptionField);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
         form.setColspan(descriptionField, 3);
 
@@ -219,14 +228,33 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
         name.setValue(table.getName() != null ? table.getName() : "");
         description.setValue(table.getDescription() != null ? table.getDescription() : "");
 
-        FormLayout form = new FormLayout(name, description);
+        ComboBox<EntityDefinitionDto> entityCombo = new ComboBox<>("Entity");
+        entityCombo.setItemLabelGenerator(EntityDefinitionDto::getName);
+        entityCombo.setClearButtonVisible(true);
+        entityCombo.setPlaceholder("(none)");
+        try {
+            entityCombo.setItems(entityClient.findAll());
+        } catch (Exception ex) {
+            log.warn("Could not load entities");
+        }
+        if (table.getEntityId() != null) {
+            entityCombo.getDataProvider().refreshAll();
+            entityCombo.setValue(EntityDefinitionDto.builder()
+                    .id(table.getEntityId()).name(table.getEntityName()).build());
+        }
+
+        FormLayout form = new FormLayout(name, entityCombo, description);
+        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 2));
         form.setColspan(description, 2);
 
         Button save = new Button("Save", e -> {
             try {
+                EntityDefinitionDto selected = entityCombo.getValue();
                 TableDefinitionDto dto = TableDefinitionDto.builder()
                         .name(name.getValue()).description(description.getValue())
-                        .schemaId(table.getSchemaId()).build();
+                        .schemaId(table.getSchemaId())
+                        .entityId(selected != null ? selected.getId() : null)
+                        .build();
                 table = client.update(table.getId(), dto);
                 dialog.close();
                 populateFields();
