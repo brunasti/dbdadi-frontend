@@ -13,6 +13,7 @@ public class ExcelExportClient {
     public byte[] exportExcel() {
         return restClient.get()
                 .uri("/api/v1/admin/export/excel")
+                .header("Accept", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 .retrieve()
                 .body(byte[].class);
     }
