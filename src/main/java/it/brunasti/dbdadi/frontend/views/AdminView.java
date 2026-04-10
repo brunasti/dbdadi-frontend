@@ -12,6 +12,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
@@ -35,19 +36,29 @@ public class AdminView extends VerticalLayout {
 
     public AdminView(JdbcImportClient importClient) {
         this.importClient = importClient;
-        setSpacing(true);
+        setSizeFull();
         setPadding(true);
-        setMaxWidth("800px");
 
-        add(new H3("Import from JDBC"));
-        add(new Paragraph(
+        resultPanel.setVisible(false);
+
+        TabSheet tabSheet = new TabSheet();
+        tabSheet.setWidthFull();
+        tabSheet.add("Import from JDBC", buildImportTab());
+
+        add(tabSheet);
+    }
+
+    private VerticalLayout buildImportTab() {
+        VerticalLayout layout = new VerticalLayout();
+        layout.setPadding(false);
+        layout.setMaxWidth("800px");
+        layout.add(new Paragraph(
                 "Connect to any database via JDBC and import its schemas, tables, columns " +
                 "and foreign-key relationships into the data dictionary."));
-
-        add(buildForm());
-        add(new Hr());
-        resultPanel.setVisible(false);
-        add(resultPanel);
+        layout.add(buildForm());
+        layout.add(new Hr());
+        layout.add(resultPanel);
+        return layout;
     }
 
     private FormLayout buildForm() {
