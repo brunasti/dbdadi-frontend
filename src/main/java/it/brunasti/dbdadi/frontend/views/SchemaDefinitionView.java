@@ -82,7 +82,6 @@ public class SchemaDefinitionView extends VerticalLayout implements BeforeEnterO
 
     private void configureGrid() {
         grid.setSizeFull();
-        grid.addColumn(SchemaDefinitionDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0).setSortable(true);
         grid.addComponentColumn(item -> {
             Button btn = new Button(item.getDatabaseModelName());
             btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);

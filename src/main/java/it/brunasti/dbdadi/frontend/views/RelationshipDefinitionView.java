@@ -48,7 +48,6 @@ public class RelationshipDefinitionView extends VerticalLayout {
 
     private void configureGrid() {
         grid.setSizeFull();
-        grid.addColumn(RelationshipDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0).setSortable(true);
         grid.addColumn(RelationshipDefinitionDto::getName).setHeader("Name").setSortable(true);
         grid.addColumn(RelationshipDefinitionDto::getType).setHeader("Type").setSortable(true);
         grid.addComponentColumn(r -> {

@@ -70,7 +70,9 @@ public class AttributeDefinitionDetailView extends VerticalLayout implements Bef
     }
 
     private void configureGrid() {
-        columnsGrid.addColumn(ColumnDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0).setSortable(true);
+        columnsGrid.addColumn(ColumnDefinitionDto::getDatabaseModelName).setHeader("Database Model").setSortable(true);
+        columnsGrid.addColumn(ColumnDefinitionDto::getSchemaName).setHeader("Schema").setSortable(true);
+        columnsGrid.addColumn(ColumnDefinitionDto::getTableName).setHeader("Table").setSortable(true);
         columnsGrid.addComponentColumn(item -> {
             Button btn = new Button(item.getName());
             btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
@@ -79,9 +81,6 @@ public class AttributeDefinitionDetailView extends VerticalLayout implements Bef
             return btn;
         }).setHeader("Column Name").setComparator(Comparator.comparing(ColumnDefinitionDto::getName));
         columnsGrid.addColumn(ColumnDefinitionDto::getDataType).setHeader("Data Type").setSortable(true);
-        columnsGrid.addColumn(ColumnDefinitionDto::getTableName).setHeader("Table").setSortable(true);
-        columnsGrid.addColumn(ColumnDefinitionDto::getSchemaName).setHeader("Schema").setSortable(true);
-        columnsGrid.addColumn(ColumnDefinitionDto::getDatabaseModelName).setHeader("Database Model").setSortable(true);
         columnsGrid.addColumn(ColumnDefinitionDto::getDescription).setHeader("Description").setSortable(true);
         columnsGrid.setAllRowsVisible(true);
     }

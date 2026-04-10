@@ -39,7 +39,6 @@ public class AttributeDefinitionView extends VerticalLayout {
 
     private void configureGrid() {
         grid.setSizeFull();
-        grid.addColumn(AttributeDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0).setSortable(true);
         grid.addComponentColumn(item -> {
             Button btn = new Button(item.getName());
             btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);

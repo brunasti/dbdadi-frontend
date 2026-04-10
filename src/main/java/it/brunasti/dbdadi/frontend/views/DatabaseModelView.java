@@ -46,7 +46,6 @@ public class DatabaseModelView extends VerticalLayout {
 
     private void configureGrid() {
         grid.setSizeFull();
-        grid.addColumn(DatabaseModelDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0).setSortable(true);
         grid.addComponentColumn(item -> {
             Button nameBtn = new Button(item.getName());
             nameBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);

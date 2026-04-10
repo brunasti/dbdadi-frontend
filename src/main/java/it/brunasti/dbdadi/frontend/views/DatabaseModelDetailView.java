@@ -132,7 +132,6 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
     }
 
     private void configureGrid() {
-        schemasGrid.addColumn(SchemaDefinitionDto::getId).setHeader("ID").setWidth("80px").setFlexGrow(0).setSortable(true);
         schemasGrid.addComponentColumn(item -> {
             Button btn = new Button(item.getName());
             btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);

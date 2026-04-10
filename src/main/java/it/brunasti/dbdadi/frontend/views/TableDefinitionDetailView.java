@@ -203,7 +203,6 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
 
     private void configureRelationshipGrids() {
         for (Grid<RelationshipDefinitionDto> grid : new Grid[]{outgoingGrid, incomingGrid}) {
-            grid.addColumn(RelationshipDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0).setSortable(true);
             grid.addComponentColumn(r -> {
                 Button btn = new Button(r.getName());
                 btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);

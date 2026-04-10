@@ -175,7 +175,6 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
         }
 
         Grid<RelationshipDefinitionDto> fromGrid = new Grid<>(RelationshipDefinitionDto.class, false);
-        fromGrid.addColumn(RelationshipDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0);
         fromGrid.addComponentColumn(r -> {
             Button btn = new Button(r.getName());
             btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
@@ -190,7 +189,6 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
         fromGrid.setAllRowsVisible(true);
 
         Grid<RelationshipDefinitionDto> toGrid = new Grid<>(RelationshipDefinitionDto.class, false);
-        toGrid.addColumn(RelationshipDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0);
         toGrid.addComponentColumn(r -> {
             Button btn = new Button(r.getName());
             btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);

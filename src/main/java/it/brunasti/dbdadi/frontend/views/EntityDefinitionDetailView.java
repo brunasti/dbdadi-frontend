@@ -70,7 +70,6 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
     }
 
     private void configureGrid() {
-        tablesGrid.addColumn(TableDefinitionDto::getId).setHeader("ID").setWidth("70px").setFlexGrow(0).setSortable(true);
         tablesGrid.addComponentColumn(item -> {
             Button btn = new Button(item.getName());
             btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
