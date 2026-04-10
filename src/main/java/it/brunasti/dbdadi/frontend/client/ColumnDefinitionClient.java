@@ -43,6 +43,13 @@ public class ColumnDefinitionClient {
                 .body(new ParameterizedTypeReference<>() {});
     }
 
+    public List<ColumnDefinitionDto> findByAttribute(Long attributeId) {
+        return restClient.get()
+                .uri(BASE_PATH + "?attributeId={id}", attributeId)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+    }
+
     public ColumnDefinitionDto findById(Long id) {
         return restClient.get()
                 .uri(BASE_PATH + "/{id}", id)

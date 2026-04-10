@@ -24,10 +24,12 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import it.brunasti.dbdadi.frontend.client.AttributeDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.ColumnDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.DatabaseModelClient;
 import it.brunasti.dbdadi.frontend.client.SchemaDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.TableDefinitionClient;
+import it.brunasti.dbdadi.frontend.dto.AttributeDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.ColumnDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.DatabaseModelDto;
 import it.brunasti.dbdadi.frontend.dto.SchemaDefinitionDto;
@@ -48,6 +50,7 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
     private final TableDefinitionClient tableClient;
     private final SchemaDefinitionClient schemaClient;
     private final DatabaseModelClient dbModelClient;
+    private final AttributeDefinitionClient attributeClient;
 
     private final Grid<ColumnDefinitionDto> grid = new Grid<>(ColumnDefinitionDto.class, false);
     private final ComboBox<DatabaseModelDto> dbModelFilter = new ComboBox<>("Filter by Database Model");
@@ -56,11 +59,13 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
     private final HorizontalLayout breadcrumb = new HorizontalLayout();
 
     public ColumnDefinitionView(ColumnDefinitionClient client, TableDefinitionClient tableClient,
-                                 SchemaDefinitionClient schemaClient, DatabaseModelClient dbModelClient) {
+                                 SchemaDefinitionClient schemaClient, DatabaseModelClient dbModelClient,
+                                 AttributeDefinitionClient attributeClient) {
         this.client = client;
         this.tableClient = tableClient;
         this.schemaClient = schemaClient;
         this.dbModelClient = dbModelClient;
+        this.attributeClient = attributeClient;
         setSizeFull();
         configureGrid();
         configureFilters();
@@ -272,6 +277,11 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
         Checkbox primaryKey = new Checkbox("Primary Key");
         Checkbox unique = new Checkbox("Unique");
         TextArea description = new TextArea("Description");
+        ComboBox<AttributeDefinitionDto> attributeCombo = new ComboBox<>("Attribute");
+        attributeCombo.setItemLabelGenerator(AttributeDefinitionDto::getName);
+        attributeCombo.setClearButtonVisible(true);
+        try { attributeCombo.setItems(attributeClient.findAll()); }
+        catch (Exception e) { log.warn("Could not load attributes"); }
 
         if (item != null) {
             name.setValue(item.getName() != null ? item.getName() : "");
@@ -290,16 +300,24 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
                         .filter(t -> t.getId().equals(item.getTableId()))
                         .findFirst().ifPresent(table::setValue);
             }
+            if (item.getAttributeId() != null) {
+                try {
+                    attributeClient.findAll().stream()
+                            .filter(a -> a.getId().equals(item.getAttributeId()))
+                            .findFirst().ifPresent(attributeCombo::setValue);
+                } catch (Exception e) { log.warn("Could not pre-select attribute"); }
+            }
         } else {
             nullable.setValue(true);
             table.setValue(tableFilter.getValue());
         }
 
         FormLayout form = new FormLayout(table, name, dataType, length, precision, scale, ordinal,
-                defaultValue, nullable, primaryKey, unique, description);
+                defaultValue, nullable, primaryKey, unique, description, attributeCombo);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
         form.setColspan(table, 3);
         form.setColspan(description, 3);
+        form.setColspan(attributeCombo, 3);
 
         Button save = new Button("Save", e -> {
             try {
@@ -311,6 +329,7 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
                         .nullable(nullable.getValue()).primaryKey(primaryKey.getValue())
                         .unique(unique.getValue())
                         .tableId(table.getValue() != null ? table.getValue().getId() : null)
+                        .attributeId(attributeCombo.getValue() != null ? attributeCombo.getValue().getId() : null)
                         .build();
                 if (item == null) client.create(dto);
                 else client.update(item.getId(), dto);

@@ -4,6 +4,7 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
@@ -22,8 +23,10 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import it.brunasti.dbdadi.frontend.client.AttributeDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.ColumnDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.RelationshipDefinitionClient;
+import it.brunasti.dbdadi.frontend.dto.AttributeDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.ColumnDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.RelationshipDefinitionDto;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +42,7 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
 
     private final ColumnDefinitionClient client;
     private final RelationshipDefinitionClient relClient;
+    private final AttributeDefinitionClient attributeClient;
     private ColumnDefinitionDto column;
 
     private final TextField nameField = new TextField("Name");
@@ -53,9 +57,11 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
     private final Checkbox uniqueField = new Checkbox("Unique");
     private final TextArea descriptionField = new TextArea("Description");
 
-    public ColumnDefinitionDetailView(ColumnDefinitionClient client, RelationshipDefinitionClient relClient) {
+    public ColumnDefinitionDetailView(ColumnDefinitionClient client, RelationshipDefinitionClient relClient,
+                                       AttributeDefinitionClient attributeClient) {
         this.client = client;
         this.relClient = relClient;
+        this.attributeClient = attributeClient;
         setWidthFull();
         setPadding(true);
         configureFields();
@@ -138,7 +144,18 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
         Button deleteBtn = new Button("Delete", e -> confirmDelete());
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
 
-        add(form, new HorizontalLayout(editBtn, deleteBtn));
+        VerticalLayout attributeSection = new VerticalLayout();
+        attributeSection.setPadding(false);
+        attributeSection.setSpacing(false);
+        if (column.getAttributeId() != null) {
+            Button attributeLink = new Button("Attribute: " + column.getAttributeName());
+            attributeLink.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            attributeLink.getStyle().set("font-weight", "bold");
+            attributeLink.addClickListener(e -> UI.getCurrent().navigate("attributes/" + column.getAttributeId()));
+            attributeSection.add(attributeLink);
+        }
+
+        add(form, new HorizontalLayout(editBtn, deleteBtn), attributeSection);
 
         add(buildRelationshipSection());
     }
@@ -211,6 +228,11 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
         Checkbox primaryKey = new Checkbox("Primary Key");
         Checkbox unique = new Checkbox("Unique");
         TextArea description = new TextArea("Description");
+        ComboBox<AttributeDefinitionDto> attributeCombo = new ComboBox<>("Attribute");
+        attributeCombo.setItemLabelGenerator(AttributeDefinitionDto::getName);
+        attributeCombo.setClearButtonVisible(true);
+        try { attributeCombo.setItems(attributeClient.findAll()); }
+        catch (Exception e) { log.warn("Could not load attributes"); }
 
         name.setValue(column.getName() != null ? column.getName() : "");
         dataType.setValue(column.getDataType() != null ? column.getDataType() : "");
@@ -223,11 +245,20 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
         primaryKey.setValue(column.isPrimaryKey());
         unique.setValue(column.isUnique());
         description.setValue(column.getDescription() != null ? column.getDescription() : "");
+        if (column.getAttributeId() != null) {
+            try {
+                attributeCombo.setItems(attributeClient.findAll());
+                attributeClient.findAll().stream()
+                        .filter(a -> a.getId().equals(column.getAttributeId()))
+                        .findFirst().ifPresent(attributeCombo::setValue);
+            } catch (Exception e) { log.warn("Could not pre-select attribute"); }
+        }
 
         FormLayout form = new FormLayout(name, dataType, length, precision, scale, ordinal,
-                defaultValue, nullable, primaryKey, unique, description);
+                defaultValue, nullable, primaryKey, unique, description, attributeCombo);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
         form.setColspan(description, 3);
+        form.setColspan(attributeCombo, 3);
 
         Button save = new Button("Save", e -> {
             try {
@@ -237,7 +268,9 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
                         .precision(precision.getValue()).scale(scale.getValue())
                         .ordinalPosition(ordinal.getValue()).defaultValue(defaultValue.getValue())
                         .nullable(nullable.getValue()).primaryKey(primaryKey.getValue())
-                        .unique(unique.getValue()).tableId(column.getTableId()).build();
+                        .unique(unique.getValue()).tableId(column.getTableId())
+                        .attributeId(attributeCombo.getValue() != null ? attributeCombo.getValue().getId() : null)
+                        .build();
                 column = client.update(column.getId(), dto);
                 dialog.close();
                 populateFields();
