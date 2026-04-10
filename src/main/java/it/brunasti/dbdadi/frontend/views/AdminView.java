@@ -1,5 +1,6 @@
 package it.brunasti.dbdadi.frontend.views;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -8,6 +9,7 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Hr;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -18,10 +20,14 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import it.brunasti.dbdadi.frontend.client.ExcelExportClient;
 import it.brunasti.dbdadi.frontend.client.JdbcImportClient;
 import it.brunasti.dbdadi.frontend.dto.JdbcImportRequest;
 import it.brunasti.dbdadi.frontend.dto.JdbcImportResult;
 import lombok.extern.slf4j.Slf4j;
+
+import java.io.ByteArrayInputStream;
+import java.time.LocalDate;
 
 @Route(value = "admin", layout = MainLayout.class)
 @PageTitle("DBDaDi | Admin")
@@ -30,12 +36,14 @@ import lombok.extern.slf4j.Slf4j;
 public class AdminView extends VerticalLayout {
 
     private final JdbcImportClient importClient;
+    private final ExcelExportClient exportClient;
 
     // Result panel (hidden until import runs)
     private final VerticalLayout resultPanel = new VerticalLayout();
 
-    public AdminView(JdbcImportClient importClient) {
+    public AdminView(JdbcImportClient importClient, ExcelExportClient exportClient) {
         this.importClient = importClient;
+        this.exportClient = exportClient;
         setSizeFull();
         setPadding(true);
 
@@ -44,8 +52,48 @@ public class AdminView extends VerticalLayout {
         TabSheet tabSheet = new TabSheet();
         tabSheet.setWidthFull();
         tabSheet.add("Import from JDBC", buildImportTab());
+        tabSheet.add("Export to Excel", buildExportTab());
 
         add(tabSheet);
+    }
+
+    private VerticalLayout buildExportTab() {
+        VerticalLayout layout = new VerticalLayout();
+        layout.setPadding(false);
+        layout.setMaxWidth("600px");
+
+        layout.add(new Paragraph(
+                "Export the full content of the data dictionary to a multi-sheet Excel file (.xlsx). " +
+                "The file contains one sheet per entity type: Database Models, Entities, Schemas, " +
+                "Tables, Columns and Relationships."));
+
+        String filename = "dbdadi-export-" + LocalDate.now() + ".xlsx";
+        StreamResource resource = new StreamResource(filename, () -> {
+            try {
+                byte[] bytes = exportClient.exportExcel();
+                return new ByteArrayInputStream(bytes);
+            } catch (Exception ex) {
+                log.error("Export failed", ex);
+                return new ByteArrayInputStream(new byte[0]);
+            }
+        });
+        resource.setContentType(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+
+        com.vaadin.flow.component.html.Anchor downloadLink =
+                new com.vaadin.flow.component.html.Anchor(resource, "Export to Excel (.xlsx)");
+        downloadLink.getElement().setAttribute("download", true);
+        downloadLink.getStyle()
+                .set("display", "inline-block")
+                .set("padding", "var(--lumo-space-m) var(--lumo-space-l)")
+                .set("background-color", "var(--lumo-primary-color)")
+                .set("color", "var(--lumo-primary-contrast-color)")
+                .set("border-radius", "var(--lumo-border-radius-m)")
+                .set("text-decoration", "none")
+                .set("font-weight", "600");
+
+        layout.add(downloadLink);
+        return layout;
     }
 
     private VerticalLayout buildImportTab() {
