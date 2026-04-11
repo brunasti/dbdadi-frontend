@@ -9,7 +9,6 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Hr;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -17,16 +16,22 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.TabSheet;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.upload.Upload;
+import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 import it.brunasti.dbdadi.frontend.client.ExcelExportClient;
+import it.brunasti.dbdadi.frontend.client.ExcelImportClient;
 import it.brunasti.dbdadi.frontend.client.JdbcImportClient;
+import it.brunasti.dbdadi.frontend.dto.ExcelImportResult;
 import it.brunasti.dbdadi.frontend.dto.JdbcImportRequest;
 import it.brunasti.dbdadi.frontend.dto.JdbcImportResult;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.time.LocalDate;
 
 @Route(value = "admin", layout = MainLayout.class)
@@ -37,13 +42,16 @@ public class AdminView extends VerticalLayout {
 
     private final JdbcImportClient importClient;
     private final ExcelExportClient exportClient;
+    private final ExcelImportClient excelImportClient;
 
-    // Result panel (hidden until import runs)
+    // Result panel (hidden until JDBC import runs)
     private final VerticalLayout resultPanel = new VerticalLayout();
 
-    public AdminView(JdbcImportClient importClient, ExcelExportClient exportClient) {
+    public AdminView(JdbcImportClient importClient, ExcelExportClient exportClient,
+                     ExcelImportClient excelImportClient) {
         this.importClient = importClient;
         this.exportClient = exportClient;
+        this.excelImportClient = excelImportClient;
         setSizeFull();
         setPadding(true);
 
@@ -52,6 +60,7 @@ public class AdminView extends VerticalLayout {
         TabSheet tabSheet = new TabSheet();
         tabSheet.setWidthFull();
         tabSheet.add("Import from JDBC", buildImportTab());
+        tabSheet.add("Import from Excel", buildExcelImportTab());
         tabSheet.add("Export to Excel", buildExportTab());
 
         add(tabSheet);
@@ -94,6 +103,99 @@ public class AdminView extends VerticalLayout {
 
         layout.add(downloadLink);
         return layout;
+    }
+
+    private VerticalLayout buildExcelImportTab() {
+        VerticalLayout layout = new VerticalLayout();
+        layout.setPadding(false);
+        layout.setMaxWidth("700px");
+
+        layout.add(new Paragraph(
+                "Upload a previously exported DbDaDi Excel file (.xlsx) to recreate all entities, " +
+                "attributes, database models, schemas, tables, columns and relationships. " +
+                "Existing records with the same name are skipped (no overwrite)."));
+
+        VerticalLayout importResultPanel = new VerticalLayout();
+        importResultPanel.setPadding(false);
+        importResultPanel.setVisible(false);
+
+        MemoryBuffer buffer = new MemoryBuffer();
+        Upload upload = new Upload(buffer);
+        upload.setAcceptedFileTypes(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx");
+        upload.setMaxFiles(1);
+        upload.setDropLabel(new Span("Drop .xlsx file here or click to browse"));
+
+        Button runBtn = new Button("Import");
+        runBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_LARGE);
+        runBtn.setEnabled(false);
+
+        // Track uploaded bytes so we can pass them when the button is clicked
+        final byte[][] uploadedBytes = {null};
+        final String[] uploadedName = {null};
+
+        upload.addSucceededListener(event -> {
+            try {
+                InputStream is = buffer.getInputStream();
+                uploadedBytes[0] = is.readAllBytes();
+                uploadedName[0] = event.getFileName();
+                runBtn.setEnabled(true);
+            } catch (Exception e) {
+                log.error("Failed to read uploaded file", e);
+                notify("Failed to read file: " + e.getMessage(), true);
+            }
+        });
+
+        upload.addFileRemovedListener(event -> {
+            uploadedBytes[0] = null;
+            uploadedName[0] = null;
+            runBtn.setEnabled(false);
+            importResultPanel.setVisible(false);
+        });
+
+        runBtn.addClickListener(e -> {
+            if (uploadedBytes[0] == null) return;
+            try {
+                ExcelImportResult result = excelImportClient.importExcel(
+                        uploadedBytes[0], uploadedName[0]);
+                showExcelImportResult(result, importResultPanel);
+                notify("Import completed!", false);
+            } catch (Exception ex) {
+                log.error("Excel import failed", ex);
+                notify("Import failed: " + ex.getMessage(), true);
+            }
+        });
+
+        layout.add(upload, runBtn, importResultPanel);
+        return layout;
+    }
+
+    private void showExcelImportResult(ExcelImportResult result, VerticalLayout panel) {
+        panel.removeAll();
+        panel.setVisible(true);
+        panel.add(new H3("Import Result"));
+
+        VerticalLayout stats = new VerticalLayout();
+        stats.setSpacing(false);
+        stats.setPadding(false);
+        stats.add(stat("Entities imported",        String.valueOf(result.getEntitiesImported())));
+        stats.add(stat("Attributes imported",      String.valueOf(result.getAttributesImported())));
+        stats.add(stat("Database Models imported", String.valueOf(result.getDatabaseModelsImported())));
+        stats.add(stat("Schemas imported",         String.valueOf(result.getSchemasImported())));
+        stats.add(stat("Tables imported",          String.valueOf(result.getTablesImported())));
+        stats.add(stat("Columns imported",         String.valueOf(result.getColumnsImported())));
+        stats.add(stat("Relationships imported",   String.valueOf(result.getRelationshipsImported())));
+        stats.add(stat("Skipped (duplicates)",     String.valueOf(result.getSkipped())));
+        panel.add(stats);
+
+        if (result.getWarnings() != null && !result.getWarnings().isEmpty()) {
+            panel.add(new H3("Warnings (" + result.getWarnings().size() + ")"));
+            for (String warning : result.getWarnings()) {
+                Paragraph p = new Paragraph("⚠ " + warning);
+                p.getStyle().set("color", "var(--lumo-warning-text-color)");
+                panel.add(p);
+            }
+        }
     }
 
     private VerticalLayout buildImportTab() {
