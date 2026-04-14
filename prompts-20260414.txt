@@ -1,0 +1,52 @@
+Prompts given to Claude - up to 2026-04-14
+==========================================
+
+--- Previous sessions (before 2026-04-14) ---
+
+1. [session start - Attribute feature continuation, no explicit prompt]
+
+2. In the /attributes/<id> page, the list of the columns should show the values in this sequence: Database Model, Schema, Table, Column Name. You can remove di ID from this and all the other lists because it should be only an internal reference.
+
+3. I tested the Export to Excel, but it seems not to work: the file exported is 0 bytes....
+
+4. Very good, just we need to: add the new Attributes sheet, reorder the sheets in this sequence: Entity, Attributes, Database Model, Schema, Tables, Columns, Relationships
+
+5. Could you create an import function that enable to recreate the full db from the exported excel file?
+
+6. Could you create an import function that enable to recreate the full db from the exported excel file?
+
+7. could you save into a text file all the prompts I have given you up to now, in a file called prompts-20260411.txt?
+
+8. could you save into a text file all the prompts I have given you up to now, in a file called prompts-20260413.txt?
+
+9. Hello Claude!
+
+10. I would like to add some security to my DBDaDi application, in a modular way. First with an 'internal' solution, where there is a table in the DB with the list of the users allowed, the role they have and their password (hashed in a simple way), and a login page. All the other pages are protected so that an user who has not loged in succesfully can not access them. The roles are: Admin, who can do everything included creating and deleting other users via an ad hoc section of the left menu, Power User, who can make the import and export and edit all the content, Editor, who cna edit all the content but not execute import and export, and finally Viewer, who can't edit anything and only navigate the informations.
+
+11. What's the username and password of the first admin user?
+
+12. perfect!
+
+13. Can you even implement the logout function? When I press the Logout button I get a page with: Could not navigate to 'logout' [route list]
+
+14. In the login page, could you not show the left navigation menu? The entries are all not accessible if the user has not done a successful login...
+
+--- Session 2026-04-14 ---
+
+15. When operating as a Viewer user, there are still some "New", "Edit" and "Delete" buttons visible, as the "New Column" in /tables/<id> page.
+
+16. In the /relationships page, there is no way to go to the details page of a relation, I would like it to be possible by clicking on the relation name...
+
+17. In the relationships/<id> page, when in the Viewer user, there is a Delete button
+
+18. In both the tables/<id> and the columns/<id> pages there should be a button to create a new relationship from this object (as source) and a button to create a new relationship to this object (as target) and in each case the corresponding fields in the new relationship should be populated
+
+19. In the tables/<id> view, the "To Column" of the "Outgoing Relationships (this table is the origin)" list and the "From Column" of the "Incoming Relationships (this table is the target)" list should be clickable to open the specific column/<id> view
+
+20. In the columns/<id> page, in the relationships list, there should be also the name of the remote table connected by the relation
+
+21. An attribute should be linked to an entity, which can be linked to many attributes. Can you add this relation between the two object and enable the editing? As for example adding a new Attribute from within an Entity, and navigating from an Attribute to the corresponding Entity, and showing a list of Attribute in the Entity view?
+
+22. In the attributes/<id> page, in the list "Linked Columns", could you make the "Database Model", "Schema" and "Table" columns clickable and linked to the corresponding view?
+
+23. could you save into a text file all the prompts I have given you up to now, in a file called prompts-<today date in yyymmdd format>.txt ?
