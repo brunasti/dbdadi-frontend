@@ -21,7 +21,7 @@ import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.StreamResource;
-import com.vaadin.flow.server.auth.AnonymousAllowed;
+import jakarta.annotation.security.RolesAllowed;
 import it.brunasti.dbdadi.frontend.client.ExcelExportClient;
 import it.brunasti.dbdadi.frontend.client.ExcelImportClient;
 import it.brunasti.dbdadi.frontend.client.JdbcImportClient;
@@ -36,7 +36,7 @@ import java.time.LocalDate;
 
 @Route(value = "admin", layout = MainLayout.class)
 @PageTitle("DBDaDi | Admin")
-@AnonymousAllowed
+@RolesAllowed({"ADMIN", "POWER_USER"})
 @Slf4j
 public class AdminView extends VerticalLayout {
 
