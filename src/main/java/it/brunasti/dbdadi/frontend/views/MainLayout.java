@@ -13,9 +13,11 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.router.Layout;
-import com.vaadin.flow.server.auth.AnonymousAllowed;
+import com.vaadin.flow.server.VaadinServletRequest;
 import it.brunasti.dbdadi.frontend.security.SecurityUtils;
 import jakarta.annotation.security.PermitAll;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 
 @Layout
 @PermitAll
@@ -45,8 +47,12 @@ public class MainLayout extends AppLayout {
                 .set("color", "var(--lumo-secondary-text-color)")
                 .set("margin-right", "var(--lumo-space-m)");
 
-        Button logoutBtn = new Button("Logout", VaadinIcon.SIGN_OUT.create(),
-                e -> getUI().ifPresent(ui -> ui.getPage().setLocation("/logout")));
+        Button logoutBtn = new Button("Logout", VaadinIcon.SIGN_OUT.create(), e -> {
+            new SecurityContextLogoutHandler().logout(
+                    VaadinServletRequest.getCurrent().getHttpServletRequest(), null,
+                    SecurityContextHolder.getContext().getAuthentication());
+            getUI().ifPresent(ui -> ui.getPage().setLocation("/login"));
+        });
         logoutBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
 
         HorizontalLayout header = new HorizontalLayout(toggle, logo, title);
