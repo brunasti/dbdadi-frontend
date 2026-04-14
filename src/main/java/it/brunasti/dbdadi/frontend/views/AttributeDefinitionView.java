@@ -47,6 +47,16 @@ public class AttributeDefinitionView extends VerticalLayout {
             btn.addClickListener(e -> UI.getCurrent().navigate("attributes/" + item.getId()));
             return btn;
         }).setHeader("Name").setComparator(AttributeDefinitionDto::getName);
+        grid.addComponentColumn(item -> {
+            if (item.getEntityId() != null) {
+                Button btn = new Button(item.getEntityName() != null ? item.getEntityName() : "");
+                btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+                btn.getStyle().set("padding", "0");
+                btn.addClickListener(e -> UI.getCurrent().navigate("entities/" + item.getEntityId()));
+                return btn;
+            }
+            return new com.vaadin.flow.component.html.Span();
+        }).setHeader("Entity").setComparator(item -> item.getEntityName() != null ? item.getEntityName() : "");
         grid.addColumn(AttributeDefinitionDto::getDescription).setHeader("Description").setSortable(true);
         grid.addComponentColumn(item -> {
             Button edit = new Button("Edit", e -> openDialog(item));

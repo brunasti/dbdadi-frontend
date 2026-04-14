@@ -3,6 +3,7 @@ package it.brunasti.dbdadi.frontend.views;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
@@ -23,8 +24,10 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import it.brunasti.dbdadi.frontend.security.SecurityUtils;
 import it.brunasti.dbdadi.frontend.client.AttributeDefinitionClient;
+import it.brunasti.dbdadi.frontend.client.EntityDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.AttributeDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.ColumnDefinitionDto;
+import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Comparator;
@@ -36,14 +39,16 @@ import java.util.Comparator;
 public class AttributeDefinitionDetailView extends VerticalLayout implements BeforeEnterObserver {
 
     private final AttributeDefinitionClient client;
+    private final EntityDefinitionClient entityClient;
     private AttributeDefinitionDto attribute;
 
     private final TextField nameField = new TextField("Name");
     private final TextArea descriptionField = new TextArea("Description");
     private final Grid<ColumnDefinitionDto> columnsGrid = new Grid<>(ColumnDefinitionDto.class, false);
 
-    public AttributeDefinitionDetailView(AttributeDefinitionClient client) {
+    public AttributeDefinitionDetailView(AttributeDefinitionClient client, EntityDefinitionClient entityClient) {
         this.client = client;
+        this.entityClient = entityClient;
         setWidthFull();
         setPadding(true);
         configureFields();
@@ -100,6 +105,17 @@ public class AttributeDefinitionDetailView extends VerticalLayout implements Bef
         nameField.setValue(attribute.getName() != null ? attribute.getName() : "");
         descriptionField.setValue(attribute.getDescription() != null ? attribute.getDescription() : "");
 
+        VerticalLayout entitySection = new VerticalLayout();
+        entitySection.setPadding(false);
+        entitySection.setSpacing(false);
+        if (attribute.getEntityId() != null) {
+            Button entityLink = new Button("Entity: " + attribute.getEntityName());
+            entityLink.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            entityLink.getStyle().set("font-weight", "bold");
+            entityLink.addClickListener(e -> UI.getCurrent().navigate("entities/" + attribute.getEntityId()));
+            entitySection.add(entityLink);
+        }
+
         FormLayout form = new FormLayout(nameField, descriptionField);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 2));
         form.setColspan(descriptionField, 2);
@@ -111,7 +127,7 @@ public class AttributeDefinitionDetailView extends VerticalLayout implements Bef
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
         deleteBtn.setVisible(SecurityUtils.canEdit());
 
-        add(form, new HorizontalLayout(editBtn, deleteBtn), new Hr(), new H3("Linked Columns"));
+        add(form, entitySection, new HorizontalLayout(editBtn, deleteBtn), new Hr(), new H3("Linked Columns"));
         add(columnsGrid);
     }
 
@@ -122,17 +138,31 @@ public class AttributeDefinitionDetailView extends VerticalLayout implements Bef
 
         TextField name = new TextField("Name");
         TextArea description = new TextArea("Description");
+        ComboBox<EntityDefinitionDto> entityCombo = new ComboBox<>("Entity");
+        entityCombo.setItemLabelGenerator(EntityDefinitionDto::getName);
+        entityCombo.setClearButtonVisible(true);
+        entityCombo.setPlaceholder("(none)");
+        try { entityCombo.setItems(entityClient.findAll()); }
+        catch (Exception e) { log.warn("Could not load entities"); }
+        if (attribute.getEntityId() != null) {
+            entityCombo.setValue(EntityDefinitionDto.builder()
+                    .id(attribute.getEntityId()).name(attribute.getEntityName()).build());
+        }
+
         name.setValue(attribute.getName() != null ? attribute.getName() : "");
         description.setValue(attribute.getDescription() != null ? attribute.getDescription() : "");
 
-        FormLayout form = new FormLayout(name, description);
+        FormLayout form = new FormLayout(name, entityCombo, description);
+        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 2));
         form.setColspan(description, 2);
 
         Button save = new Button("Save", e -> {
             try {
+                EntityDefinitionDto selectedEntity = entityCombo.getValue();
                 AttributeDefinitionDto dto = AttributeDefinitionDto.builder()
                         .name(name.getValue())
                         .description(description.getValue())
+                        .entityId(selectedEntity != null ? selectedEntity.getId() : null)
                         .build();
                 attribute = client.update(attribute.getId(), dto);
                 dialog.close();

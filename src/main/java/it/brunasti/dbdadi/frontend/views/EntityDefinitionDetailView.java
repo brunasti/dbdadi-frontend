@@ -22,7 +22,9 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import it.brunasti.dbdadi.frontend.security.SecurityUtils;
+import it.brunasti.dbdadi.frontend.client.AttributeDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.EntityDefinitionClient;
+import it.brunasti.dbdadi.frontend.dto.AttributeDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
 import lombok.extern.slf4j.Slf4j;
@@ -36,18 +38,22 @@ import java.util.Comparator;
 public class EntityDefinitionDetailView extends VerticalLayout implements BeforeEnterObserver {
 
     private final EntityDefinitionClient client;
+    private final AttributeDefinitionClient attributeClient;
     private EntityDefinitionDto entity;
 
     private final TextField nameField = new TextField("Name");
     private final TextArea descriptionField = new TextArea("Description");
     private final Grid<TableDefinitionDto> tablesGrid = new Grid<>(TableDefinitionDto.class, false);
+    private final Grid<AttributeDefinitionDto> attributesGrid = new Grid<>(AttributeDefinitionDto.class, false);
 
-    public EntityDefinitionDetailView(EntityDefinitionClient client) {
+    public EntityDefinitionDetailView(EntityDefinitionClient client, AttributeDefinitionClient attributeClient) {
         this.client = client;
+        this.attributeClient = attributeClient;
         setWidthFull();
         setPadding(true);
         configureFields();
         configureGrid();
+        configureAttributesGrid();
     }
 
     @Override
@@ -57,6 +63,7 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
                 entity = client.findById(id);
                 populateFields();
                 tablesGrid.setItems(client.findTables(id));
+                attributesGrid.setItems(attributeClient.findByEntity(id));
             } catch (Exception e) {
                 log.error("Could not load entity {}", id, e);
                 notify("Could not load entity", true);
@@ -109,7 +116,13 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
         deleteBtn.setVisible(SecurityUtils.canEdit());
 
-        add(form, new HorizontalLayout(editBtn, deleteBtn), new Hr(), new H3("Linked Tables"));
+        Button newAttributeBtn = new Button("New Attribute", e -> openEditAttributeDialog(null));
+        newAttributeBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+        newAttributeBtn.setVisible(SecurityUtils.canEdit());
+
+        add(form, new HorizontalLayout(editBtn, deleteBtn),
+            new Hr(), new H3("Linked Attributes"), newAttributeBtn, attributesGrid,
+            new Hr(), new H3("Linked Tables"));
         add(tablesGrid);
     }
 
@@ -136,6 +149,7 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
                 dialog.close();
                 populateFields();
                 tablesGrid.setItems(client.findTables(entity.getId()));
+                attributesGrid.setItems(attributeClient.findByEntity(entity.getId()));
                 notify("Saved successfully", false);
             } catch (Exception ex) {
                 notify("Save failed: " + ex.getMessage(), true);
@@ -145,6 +159,79 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
         dialog.add(form);
         dialog.getFooter().add(new Button("Cancel", e -> dialog.close()), save);
         dialog.open();
+    }
+
+    private void configureAttributesGrid() {
+        attributesGrid.addComponentColumn(item -> {
+            Button btn = new Button(item.getName());
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0").set("font-weight", "bold");
+            btn.addClickListener(e -> UI.getCurrent().navigate("attributes/" + item.getId()));
+            return btn;
+        }).setHeader("Attribute Name").setComparator(Comparator.comparing(AttributeDefinitionDto::getName));
+        attributesGrid.addColumn(AttributeDefinitionDto::getDescription).setHeader("Description").setSortable(true);
+        if (SecurityUtils.canEdit()) {
+            attributesGrid.addComponentColumn(item -> {
+                Button edit = new Button("Edit", e -> openEditAttributeDialog(item));
+                edit.addThemeVariants(ButtonVariant.LUMO_SMALL);
+                Button delete = new Button("Unlink", e -> unlinkAttribute(item));
+                delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
+                return new HorizontalLayout(edit, delete);
+            }).setHeader("Actions").setWidth("160px").setFlexGrow(0);
+        }
+        attributesGrid.setAllRowsVisible(true);
+    }
+
+    private void openEditAttributeDialog(AttributeDefinitionDto item) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(item == null ? "New Attribute" : "Edit Attribute");
+        dialog.setWidth("500px");
+
+        TextField name = new TextField("Name");
+        TextArea description = new TextArea("Description");
+        if (item != null) {
+            name.setValue(item.getName() != null ? item.getName() : "");
+            description.setValue(item.getDescription() != null ? item.getDescription() : "");
+        }
+
+        FormLayout form = new FormLayout(name, description);
+        form.setColspan(description, 2);
+
+        Button save = new Button("Save", e -> {
+            try {
+                AttributeDefinitionDto dto = AttributeDefinitionDto.builder()
+                        .name(name.getValue())
+                        .description(description.getValue())
+                        .entityId(entity.getId())
+                        .build();
+                if (item == null) attributeClient.create(dto);
+                else attributeClient.update(item.getId(), dto);
+                dialog.close();
+                attributesGrid.setItems(attributeClient.findByEntity(entity.getId()));
+                notify("Saved successfully", false);
+            } catch (Exception ex) {
+                notify("Save failed: " + ex.getMessage(), true);
+            }
+        });
+        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        dialog.add(form);
+        dialog.getFooter().add(new Button("Cancel", e -> dialog.close()), save);
+        dialog.open();
+    }
+
+    private void unlinkAttribute(AttributeDefinitionDto item) {
+        try {
+            AttributeDefinitionDto dto = AttributeDefinitionDto.builder()
+                    .name(item.getName())
+                    .description(item.getDescription())
+                    .entityId(null)
+                    .build();
+            attributeClient.update(item.getId(), dto);
+            attributesGrid.setItems(attributeClient.findByEntity(entity.getId()));
+            notify("Attribute unlinked", false);
+        } catch (Exception ex) {
+            notify("Unlink failed: " + ex.getMessage(), true);
+        }
     }
 
     private void confirmDelete() {

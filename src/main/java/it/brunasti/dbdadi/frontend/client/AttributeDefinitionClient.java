@@ -30,6 +30,13 @@ public class AttributeDefinitionClient {
                 .body(AttributeDefinitionDto.class);
     }
 
+    public List<AttributeDefinitionDto> findByEntity(Long entityId) {
+        return restClient.get()
+                .uri(BASE_PATH + "?entityId={id}", entityId)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+    }
+
     public List<ColumnDefinitionDto> findColumns(Long attributeId) {
         return restClient.get()
                 .uri("/api/v1/columns?attributeId={id}", attributeId)
