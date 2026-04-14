@@ -76,9 +76,27 @@ public class AttributeDefinitionDetailView extends VerticalLayout implements Bef
     }
 
     private void configureGrid() {
-        columnsGrid.addColumn(ColumnDefinitionDto::getDatabaseModelName).setHeader("Database Model").setSortable(true);
-        columnsGrid.addColumn(ColumnDefinitionDto::getSchemaName).setHeader("Schema").setSortable(true);
-        columnsGrid.addColumn(ColumnDefinitionDto::getTableName).setHeader("Table").setSortable(true);
+        columnsGrid.addComponentColumn(item -> {
+            Button btn = new Button(item.getDatabaseModelName() != null ? item.getDatabaseModelName() : "");
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate("database-models/" + item.getDatabaseModelId()));
+            return btn;
+        }).setHeader("Database Model").setComparator(Comparator.comparing(item -> item.getDatabaseModelName() != null ? item.getDatabaseModelName() : ""));
+        columnsGrid.addComponentColumn(item -> {
+            Button btn = new Button(item.getSchemaName() != null ? item.getSchemaName() : "");
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate("schemas/" + item.getSchemaId()));
+            return btn;
+        }).setHeader("Schema").setComparator(Comparator.comparing(item -> item.getSchemaName() != null ? item.getSchemaName() : ""));
+        columnsGrid.addComponentColumn(item -> {
+            Button btn = new Button(item.getTableName() != null ? item.getTableName() : "");
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate("tables/" + item.getTableId()));
+            return btn;
+        }).setHeader("Table").setComparator(Comparator.comparing(item -> item.getTableName() != null ? item.getTableName() : ""));
         columnsGrid.addComponentColumn(item -> {
             Button btn = new Button(item.getName());
             btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
