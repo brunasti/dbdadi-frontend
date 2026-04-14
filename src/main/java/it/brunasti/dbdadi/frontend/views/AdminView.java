@@ -185,6 +185,7 @@ public class AdminView extends VerticalLayout {
         stats.add(stat("Tables imported",          String.valueOf(result.getTablesImported())));
         stats.add(stat("Columns imported",         String.valueOf(result.getColumnsImported())));
         stats.add(stat("Relationships imported",   String.valueOf(result.getRelationshipsImported())));
+        stats.add(stat("Users imported",           String.valueOf(result.getUsersImported())));
         stats.add(stat("Skipped (duplicates)",     String.valueOf(result.getSkipped())));
         panel.add(stats);
 
