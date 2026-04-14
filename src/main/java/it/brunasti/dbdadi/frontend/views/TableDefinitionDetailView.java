@@ -195,13 +195,15 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
             if (col.isUnique()) flags.add(VaadinIcon.STAR.create());
             return flags;
         }).setHeader("Flags").setWidth("100px").setFlexGrow(0);
-        columnsGrid.addComponentColumn(item -> {
-            Button edit = new Button("Edit", e -> openEditColumnDialog(item));
-            edit.addThemeVariants(ButtonVariant.LUMO_SMALL);
-            Button delete = new Button("Delete", e -> confirmDeleteColumn(item));
-            delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
-            return new HorizontalLayout(edit, delete);
-        }).setHeader("Actions").setWidth("160px").setFlexGrow(0);
+        if (SecurityUtils.canEdit()) {
+            columnsGrid.addComponentColumn(item -> {
+                Button edit = new Button("Edit", e -> openEditColumnDialog(item));
+                edit.addThemeVariants(ButtonVariant.LUMO_SMALL);
+                Button delete = new Button("Delete", e -> confirmDeleteColumn(item));
+                delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
+                return new HorizontalLayout(edit, delete);
+            }).setHeader("Actions").setWidth("160px").setFlexGrow(0);
+        }
     }
 
     private void configureRelationshipGrids() {
@@ -242,6 +244,7 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
     private Button createAddColumnButton() {
         Button btn = new Button("New Column", e -> openEditColumnDialog(null));
         btn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+        btn.setVisible(SecurityUtils.canEdit());
         return btn;
     }
 

@@ -143,18 +143,21 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
             return btn;
         }).setHeader("Name").setComparator(Comparator.comparing(SchemaDefinitionDto::getName));
         schemasGrid.addColumn(SchemaDefinitionDto::getDescription).setHeader("Description").setSortable(true);
-        schemasGrid.addComponentColumn(item -> {
-            Button edit = new Button("Edit", e -> openEditSchemaDialog(item));
-            edit.addThemeVariants(ButtonVariant.LUMO_SMALL);
-            Button delete = new Button("Delete", e -> confirmDeleteSchema(item));
-            delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
-            return new HorizontalLayout(edit, delete);
-        }).setHeader("Actions").setWidth("160px").setFlexGrow(0);
+        if (SecurityUtils.canEdit()) {
+            schemasGrid.addComponentColumn(item -> {
+                Button edit = new Button("Edit", e -> openEditSchemaDialog(item));
+                edit.addThemeVariants(ButtonVariant.LUMO_SMALL);
+                Button delete = new Button("Delete", e -> confirmDeleteSchema(item));
+                delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
+                return new HorizontalLayout(edit, delete);
+            }).setHeader("Actions").setWidth("160px").setFlexGrow(0);
+        }
     }
 
     private Button createAddSchemaButton() {
         Button btn = new Button("New Schema", e -> openEditSchemaDialog(null));
         btn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+        btn.setVisible(SecurityUtils.canEdit());
         return btn;
     }
 

@@ -118,18 +118,21 @@ public class SchemaDefinitionDetailView extends VerticalLayout implements Before
             return btn;
         }).setHeader("Name").setComparator(Comparator.comparing(TableDefinitionDto::getName));
         tablesGrid.addColumn(TableDefinitionDto::getDescription).setHeader("Description").setSortable(true);
-        tablesGrid.addComponentColumn(item -> {
-            Button edit = new Button("Edit", e -> openEditTableDialog(item));
-            edit.addThemeVariants(ButtonVariant.LUMO_SMALL);
-            Button delete = new Button("Delete", e -> confirmDeleteTable(item));
-            delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
-            return new HorizontalLayout(edit, delete);
-        }).setHeader("Actions").setWidth("160px").setFlexGrow(0);
+        if (SecurityUtils.canEdit()) {
+            tablesGrid.addComponentColumn(item -> {
+                Button edit = new Button("Edit", e -> openEditTableDialog(item));
+                edit.addThemeVariants(ButtonVariant.LUMO_SMALL);
+                Button delete = new Button("Delete", e -> confirmDeleteTable(item));
+                delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
+                return new HorizontalLayout(edit, delete);
+            }).setHeader("Actions").setWidth("160px").setFlexGrow(0);
+        }
     }
 
     private Button createAddTableButton() {
         Button btn = new Button("New Table", e -> openEditTableDialog(null));
         btn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+        btn.setVisible(SecurityUtils.canEdit());
         return btn;
     }
 
