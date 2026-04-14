@@ -20,7 +20,8 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.auth.AnonymousAllowed;
+import jakarta.annotation.security.PermitAll;
+import it.brunasti.dbdadi.frontend.security.SecurityUtils;
 import it.brunasti.dbdadi.frontend.client.SchemaDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.TableDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.SchemaDefinitionDto;
@@ -30,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Route(value = "schemas/:schemaId", layout = MainLayout.class)
 @PageTitle("DBDaDi | Schema")
-@AnonymousAllowed
+@PermitAll
 @Slf4j
 public class SchemaDefinitionDetailView extends VerticalLayout implements BeforeEnterObserver {
 
@@ -98,8 +99,10 @@ public class SchemaDefinitionDetailView extends VerticalLayout implements Before
 
         Button editBtn = new Button("Edit", e -> openEditDialog());
         editBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        editBtn.setVisible(SecurityUtils.canEdit());
         Button deleteBtn = new Button("Delete", e -> confirmDelete());
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        deleteBtn.setVisible(SecurityUtils.canEdit());
 
         add(form, new HorizontalLayout(editBtn, deleteBtn), new Hr(), new H3("Tables"));
         tablesGrid.setAllRowsVisible(true);

@@ -2,6 +2,8 @@ package it.brunasti.dbdadi.frontend.views;
 
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
+import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Span;
@@ -12,9 +14,11 @@ import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.router.Layout;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+import it.brunasti.dbdadi.frontend.security.SecurityUtils;
+import jakarta.annotation.security.PermitAll;
 
 @Layout
-@AnonymousAllowed
+@PermitAll
 public class MainLayout extends AppLayout {
 
     public MainLayout() {
@@ -34,10 +38,27 @@ public class MainLayout extends AppLayout {
                 .set("font-size", "var(--lumo-font-size-l)")
                 .set("margin", "0");
 
+        String username = SecurityUtils.getCurrentUsername();
+        Span userSpan = new Span(username != null ? username : "");
+        userSpan.getStyle()
+                .set("font-size", "var(--lumo-font-size-s)")
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("margin-right", "var(--lumo-space-m)");
+
+        Button logoutBtn = new Button("Logout", VaadinIcon.SIGN_OUT.create(),
+                e -> getUI().ifPresent(ui -> ui.getPage().setLocation("/logout")));
+        logoutBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+
         HorizontalLayout header = new HorizontalLayout(toggle, logo, title);
         header.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
         header.setWidthFull();
         header.addClassNames("py-0", "px-m");
+
+        HorizontalLayout right = new HorizontalLayout(userSpan, logoutBtn);
+        right.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
+        right.getStyle().set("margin-left", "auto");
+        header.add(right);
+
         return header;
     }
 
@@ -52,7 +73,13 @@ public class MainLayout extends AppLayout {
         nav.addItem(new SideNavItem("Relationships", RelationshipDefinitionView.class, VaadinIcon.CONNECT.create()));
         nav.addItem(new SideNavItem("Entities", EntityDefinitionView.class, VaadinIcon.CUBES.create()));
         nav.addItem(new SideNavItem("Attributes", AttributeDefinitionView.class, VaadinIcon.TAG.create()));
-        nav.addItem(new SideNavItem("Admin", AdminView.class, VaadinIcon.COGS.create()));
+
+        if (SecurityUtils.canImportExport()) {
+            nav.addItem(new SideNavItem("Admin", AdminView.class, VaadinIcon.COGS.create()));
+        }
+        if (SecurityUtils.isAdmin()) {
+            nav.addItem(new SideNavItem("Users", UserManagementView.class, VaadinIcon.USERS.create()));
+        }
 
         return nav;
     }

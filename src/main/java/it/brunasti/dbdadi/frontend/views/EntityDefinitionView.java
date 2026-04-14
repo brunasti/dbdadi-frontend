@@ -15,14 +15,15 @@ import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.auth.AnonymousAllowed;
+import jakarta.annotation.security.PermitAll;
+import it.brunasti.dbdadi.frontend.security.SecurityUtils;
 import it.brunasti.dbdadi.frontend.client.EntityDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
 import lombok.extern.slf4j.Slf4j;
 
 @Route(value = "entities", layout = MainLayout.class)
 @PageTitle("DBDaDi | Entities")
-@AnonymousAllowed
+@PermitAll
 @Slf4j
 public class EntityDefinitionView extends VerticalLayout {
 
@@ -52,6 +53,7 @@ public class EntityDefinitionView extends VerticalLayout {
             edit.addThemeVariants(ButtonVariant.LUMO_SMALL);
             Button delete = new Button("Delete", e -> confirmDelete(item));
             delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
+            if (!SecurityUtils.canEdit()) return new com.vaadin.flow.component.html.Span();
             return new HorizontalLayout(edit, delete);
         }).setHeader("Actions").setWidth("160px").setFlexGrow(0);
     }
@@ -59,6 +61,7 @@ public class EntityDefinitionView extends VerticalLayout {
     private HorizontalLayout createToolbar() {
         Button addBtn = new Button("New Entity", e -> openDialog(null));
         addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        addBtn.setVisible(SecurityUtils.canEdit());
         Button refreshBtn = new Button("Refresh", e -> refresh());
         return new HorizontalLayout(addBtn, refreshBtn);
     }

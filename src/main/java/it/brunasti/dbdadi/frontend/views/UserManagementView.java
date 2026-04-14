@@ -1,8 +1,9 @@
 package it.brunasti.dbdadi.frontend.views;
 
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.checkbox.Checkbox;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
@@ -11,26 +12,26 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.textfield.TextArea;
+import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import jakarta.annotation.security.PermitAll;
-import it.brunasti.dbdadi.frontend.security.SecurityUtils;
-import it.brunasti.dbdadi.frontend.client.AttributeDefinitionClient;
-import it.brunasti.dbdadi.frontend.dto.AttributeDefinitionDto;
+import it.brunasti.dbdadi.frontend.client.UserManagementClient;
+import it.brunasti.dbdadi.frontend.dto.UserDto;
+import it.brunasti.dbdadi.frontend.dto.UserRole;
+import jakarta.annotation.security.RolesAllowed;
 import lombok.extern.slf4j.Slf4j;
 
-@Route(value = "attributes", layout = MainLayout.class)
-@PageTitle("DBDaDi | Attributes")
-@PermitAll
+@Route(value = "users", layout = MainLayout.class)
+@PageTitle("DBDaDi | Users")
+@RolesAllowed("ADMIN")
 @Slf4j
-public class AttributeDefinitionView extends VerticalLayout {
+public class UserManagementView extends VerticalLayout {
 
-    private final AttributeDefinitionClient client;
-    private final Grid<AttributeDefinitionDto> grid = new Grid<>(AttributeDefinitionDto.class, false);
+    private final UserManagementClient client;
+    private final Grid<UserDto> grid = new Grid<>(UserDto.class, false);
 
-    public AttributeDefinitionView(AttributeDefinitionClient client) {
+    public UserManagementView(UserManagementClient client) {
         this.client = client;
         setSizeFull();
         configureGrid();
@@ -40,53 +41,53 @@ public class AttributeDefinitionView extends VerticalLayout {
 
     private void configureGrid() {
         grid.setSizeFull();
-        grid.addComponentColumn(item -> {
-            Button btn = new Button(item.getName());
-            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
-            btn.getStyle().set("padding", "0").set("font-weight", "bold");
-            btn.addClickListener(e -> UI.getCurrent().navigate("attributes/" + item.getId()));
-            return btn;
-        }).setHeader("Name").setComparator(AttributeDefinitionDto::getName);
-        grid.addColumn(AttributeDefinitionDto::getDescription).setHeader("Description").setSortable(true);
+        grid.addColumn(UserDto::getUsername).setHeader("Username").setSortable(true);
+        grid.addColumn(u -> u.getRole() != null ? u.getRole().name() : "").setHeader("Role").setSortable(true);
+        grid.addColumn(u -> u.isEnabled() ? "Yes" : "No").setHeader("Enabled").setWidth("90px").setFlexGrow(0);
+        grid.addColumn(UserDto::getCreatedAt).setHeader("Created").setSortable(true);
         grid.addComponentColumn(item -> {
             Button edit = new Button("Edit", e -> openDialog(item));
             edit.addThemeVariants(ButtonVariant.LUMO_SMALL);
             Button delete = new Button("Delete", e -> confirmDelete(item));
             delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
-            if (!SecurityUtils.canEdit()) return new com.vaadin.flow.component.html.Span();
             return new HorizontalLayout(edit, delete);
         }).setHeader("Actions").setWidth("160px").setFlexGrow(0);
     }
 
     private HorizontalLayout createToolbar() {
-        Button addBtn = new Button("New Attribute", e -> openDialog(null));
+        Button addBtn = new Button("New User", e -> openDialog(null));
         addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        addBtn.setVisible(SecurityUtils.canEdit());
         Button refreshBtn = new Button("Refresh", e -> refresh());
         return new HorizontalLayout(addBtn, refreshBtn);
     }
 
-    private void openDialog(AttributeDefinitionDto item) {
+    private void openDialog(UserDto item) {
         Dialog dialog = new Dialog();
-        dialog.setHeaderTitle(item == null ? "New Attribute" : "Edit Attribute");
-        dialog.setWidth("500px");
+        dialog.setHeaderTitle(item == null ? "New User" : "Edit User");
+        dialog.setWidth("420px");
 
-        TextField name = new TextField("Name");
-        TextArea description = new TextArea("Description");
+        TextField username = new TextField("Username");
+        PasswordField password = new PasswordField(item == null ? "Password" : "New Password (leave blank to keep)");
+        ComboBox<UserRole> role = new ComboBox<>("Role", UserRole.values());
+        Checkbox enabled = new Checkbox("Enabled");
+        enabled.setValue(true);
 
         if (item != null) {
-            name.setValue(item.getName() != null ? item.getName() : "");
-            description.setValue(item.getDescription() != null ? item.getDescription() : "");
+            username.setValue(item.getUsername() != null ? item.getUsername() : "");
+            role.setValue(item.getRole());
+            enabled.setValue(item.isEnabled());
         }
 
-        FormLayout form = new FormLayout(name, description);
-        form.setColspan(description, 2);
+        FormLayout form = new FormLayout(username, password, role, enabled);
+        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
 
         Button save = new Button("Save", e -> {
             try {
-                AttributeDefinitionDto dto = AttributeDefinitionDto.builder()
-                        .name(name.getValue())
-                        .description(description.getValue())
+                UserDto dto = UserDto.builder()
+                        .username(username.getValue())
+                        .password(password.getValue().isBlank() ? null : password.getValue())
+                        .role(role.getValue())
+                        .enabled(enabled.getValue())
                         .build();
                 if (item == null) client.create(dto);
                 else client.update(item.getId(), dto);
@@ -104,10 +105,10 @@ public class AttributeDefinitionView extends VerticalLayout {
         dialog.open();
     }
 
-    private void confirmDelete(AttributeDefinitionDto item) {
+    private void confirmDelete(UserDto item) {
         ConfirmDialog confirm = new ConfirmDialog(
-                "Delete attribute \"" + item.getName() + "\"?",
-                "This action cannot be undone. Columns linked to this attribute will be unlinked.",
+                "Delete user \"" + item.getUsername() + "\"?",
+                "This action cannot be undone.",
                 "Delete", e -> {
                     try {
                         client.delete(item.getId());
@@ -126,8 +127,8 @@ public class AttributeDefinitionView extends VerticalLayout {
         try {
             grid.setItems(client.findAll());
         } catch (Exception e) {
-            log.error("Failed to load attributes", e);
-            notify("Could not load data: " + e.getMessage(), true);
+            log.error("Failed to load users", e);
+            notify("Could not load users: " + e.getMessage(), true);
         }
     }
 

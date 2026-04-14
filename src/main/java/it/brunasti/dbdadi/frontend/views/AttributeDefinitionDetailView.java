@@ -20,7 +20,8 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.auth.AnonymousAllowed;
+import jakarta.annotation.security.PermitAll;
+import it.brunasti.dbdadi.frontend.security.SecurityUtils;
 import it.brunasti.dbdadi.frontend.client.AttributeDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.AttributeDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.ColumnDefinitionDto;
@@ -30,7 +31,7 @@ import java.util.Comparator;
 
 @Route(value = "attributes/:attributeId", layout = MainLayout.class)
 @PageTitle("DBDaDi | Attribute")
-@AnonymousAllowed
+@PermitAll
 @Slf4j
 public class AttributeDefinitionDetailView extends VerticalLayout implements BeforeEnterObserver {
 
@@ -105,8 +106,10 @@ public class AttributeDefinitionDetailView extends VerticalLayout implements Bef
 
         Button editBtn = new Button("Edit", e -> openEditDialog());
         editBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        editBtn.setVisible(SecurityUtils.canEdit());
         Button deleteBtn = new Button("Delete", e -> confirmDelete());
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        deleteBtn.setVisible(SecurityUtils.canEdit());
 
         add(form, new HorizontalLayout(editBtn, deleteBtn), new Hr(), new H3("Linked Columns"));
         add(columnsGrid);

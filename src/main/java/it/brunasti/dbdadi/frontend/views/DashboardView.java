@@ -6,7 +6,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
-import com.vaadin.flow.server.auth.AnonymousAllowed;
+import jakarta.annotation.security.PermitAll;
 import it.brunasti.dbdadi.frontend.client.DatabaseModelClient;
 import it.brunasti.dbdadi.frontend.client.ColumnDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.RelationshipDefinitionClient;
@@ -16,7 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 @Route(value = "dashboard", layout = MainLayout.class)
 @RouteAlias(value = "", layout = MainLayout.class)
 @PageTitle("DBDaDi | Dashboard")
-@AnonymousAllowed
+@PermitAll
 @Slf4j
 public class DashboardView extends VerticalLayout {
 

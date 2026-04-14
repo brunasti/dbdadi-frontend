@@ -17,14 +17,14 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.auth.AnonymousAllowed;
+import jakarta.annotation.security.PermitAll;
 import it.brunasti.dbdadi.frontend.client.RelationshipDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.RelationshipDefinitionDto;
 import lombok.extern.slf4j.Slf4j;
 
 @Route(value = "relationships/:relationshipId", layout = MainLayout.class)
 @PageTitle("DBDaDi | Relationship")
-@AnonymousAllowed
+@PermitAll
 @Slf4j
 public class RelationshipDefinitionDetailView extends VerticalLayout implements BeforeEnterObserver {
 

@@ -20,7 +20,8 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.auth.AnonymousAllowed;
+import jakarta.annotation.security.PermitAll;
+import it.brunasti.dbdadi.frontend.security.SecurityUtils;
 import it.brunasti.dbdadi.frontend.client.EntityDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
@@ -30,7 +31,7 @@ import java.util.Comparator;
 
 @Route(value = "entities/:entityId", layout = MainLayout.class)
 @PageTitle("DBDaDi | Entity")
-@AnonymousAllowed
+@PermitAll
 @Slf4j
 public class EntityDefinitionDetailView extends VerticalLayout implements BeforeEnterObserver {
 
@@ -103,8 +104,10 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
 
         Button editBtn = new Button("Edit", e -> openEditDialog());
         editBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        editBtn.setVisible(SecurityUtils.canEdit());
         Button deleteBtn = new Button("Delete", e -> confirmDelete());
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        deleteBtn.setVisible(SecurityUtils.canEdit());
 
         add(form, new HorizontalLayout(editBtn, deleteBtn), new Hr(), new H3("Linked Tables"));
         add(tablesGrid);

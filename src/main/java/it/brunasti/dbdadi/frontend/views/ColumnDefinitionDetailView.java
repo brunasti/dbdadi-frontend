@@ -22,7 +22,8 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.auth.AnonymousAllowed;
+import jakarta.annotation.security.PermitAll;
+import it.brunasti.dbdadi.frontend.security.SecurityUtils;
 import it.brunasti.dbdadi.frontend.client.AttributeDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.ColumnDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.RelationshipDefinitionClient;
@@ -36,7 +37,7 @@ import java.util.List;
 
 @Route(value = "columns/:columnId", layout = MainLayout.class)
 @PageTitle("DBDaDi | Column")
-@AnonymousAllowed
+@PermitAll
 @Slf4j
 public class ColumnDefinitionDetailView extends VerticalLayout implements BeforeEnterObserver {
 
@@ -141,8 +142,10 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
 
         Button editBtn = new Button("Edit", e -> openEditDialog());
         editBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        editBtn.setVisible(SecurityUtils.canEdit());
         Button deleteBtn = new Button("Delete", e -> confirmDelete());
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        deleteBtn.setVisible(SecurityUtils.canEdit());
 
         VerticalLayout attributeSection = new VerticalLayout();
         attributeSection.setPadding(false);

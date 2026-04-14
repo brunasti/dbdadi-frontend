@@ -17,7 +17,8 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.auth.AnonymousAllowed;
+import jakarta.annotation.security.PermitAll;
+import it.brunasti.dbdadi.frontend.security.SecurityUtils;
 import it.brunasti.dbdadi.frontend.client.DatabaseModelClient;
 import it.brunasti.dbdadi.frontend.dto.DatabaseModelDto;
 import it.brunasti.dbdadi.frontend.dto.DbType;
@@ -29,7 +30,7 @@ import java.util.Map;
 
 @Route(value = "database-models", layout = MainLayout.class)
 @PageTitle("DBDaDi | Database Models")
-@AnonymousAllowed
+@PermitAll
 @Slf4j
 public class DatabaseModelView extends VerticalLayout {
 
@@ -61,6 +62,7 @@ public class DatabaseModelView extends VerticalLayout {
             edit.addThemeVariants(ButtonVariant.LUMO_SMALL);
             Button delete = new Button("Delete", e -> confirmDelete(item));
             delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
+            if (!SecurityUtils.canEdit()) return new com.vaadin.flow.component.html.Span();
             return new HorizontalLayout(edit, delete);
         }).setHeader("Actions").setWidth("160px").setFlexGrow(0);
     }
@@ -68,6 +70,7 @@ public class DatabaseModelView extends VerticalLayout {
     private HorizontalLayout createToolbar() {
         Button addBtn = new Button("New Database Model", e -> openDialog(null));
         addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        addBtn.setVisible(SecurityUtils.canEdit());
         Button refreshBtn = new Button("Refresh", e -> refresh());
         return new HorizontalLayout(addBtn, refreshBtn);
     }
