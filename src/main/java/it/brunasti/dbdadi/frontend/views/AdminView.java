@@ -4,6 +4,7 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
+import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Hr;
@@ -126,6 +127,20 @@ public class AdminView extends VerticalLayout {
         upload.setMaxFiles(1);
         upload.setDropLabel(new Span("Drop .xlsx file here or click to browse"));
 
+        Checkbox clearCheckbox = new Checkbox("Delete ALL existing data before import");
+        clearCheckbox.getStyle()
+                .set("color", "var(--lumo-error-color)")
+                .set("font-weight", "bold");
+
+        Paragraph clearWarning = new Paragraph(
+                "Warning: this will permanently delete all entities, attributes, database models, " +
+                "schemas, tables, columns, relationships and users before importing. This cannot be undone.");
+        clearWarning.getStyle()
+                .set("color", "var(--lumo-error-color)")
+                .set("font-size", "var(--lumo-font-size-s)");
+        clearWarning.setVisible(false);
+        clearCheckbox.addValueChangeListener(e -> clearWarning.setVisible(e.getValue()));
+
         Button runBtn = new Button("Import");
         runBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_LARGE);
         runBtn.setEnabled(false);
@@ -155,19 +170,32 @@ public class AdminView extends VerticalLayout {
 
         runBtn.addClickListener(e -> {
             if (uploadedBytes[0] == null) return;
-            try {
-                ExcelImportResult result = excelImportClient.importExcel(
-                        uploadedBytes[0], uploadedName[0]);
-                showExcelImportResult(result, importResultPanel);
-                notify("Import completed!", false);
-            } catch (Exception ex) {
-                log.error("Excel import failed", ex);
-                notify("Import failed: " + ex.getMessage(), true);
+            if (clearCheckbox.getValue()) {
+                ConfirmDialog confirm = new ConfirmDialog(
+                        "Delete all data?",
+                        "This will permanently delete ALL data in the system before importing. This cannot be undone.",
+                        "Delete and Import", ev -> runImportExcel(uploadedBytes[0], uploadedName[0], true, importResultPanel),
+                        "Cancel", ev -> {});
+                confirm.setConfirmButtonTheme("error primary");
+                confirm.open();
+            } else {
+                runImportExcel(uploadedBytes[0], uploadedName[0], false, importResultPanel);
             }
         });
 
-        layout.add(upload, runBtn, importResultPanel);
+        layout.add(upload, clearCheckbox, clearWarning, runBtn, importResultPanel);
         return layout;
+    }
+
+    private void runImportExcel(byte[] bytes, String filename, boolean clear, VerticalLayout resultPanel) {
+        try {
+            ExcelImportResult result = excelImportClient.importExcel(bytes, filename, clear);
+            showExcelImportResult(result, resultPanel);
+            notify("Import completed!", false);
+        } catch (Exception ex) {
+            log.error("Excel import failed", ex);
+            notify("Import failed: " + ex.getMessage(), true);
+        }
     }
 
     private void showExcelImportResult(ExcelImportResult result, VerticalLayout panel) {

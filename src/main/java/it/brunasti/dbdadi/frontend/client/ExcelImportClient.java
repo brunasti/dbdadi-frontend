@@ -15,7 +15,7 @@ public class ExcelImportClient {
 
     private final RestClient restClient;
 
-    public ExcelImportResult importExcel(byte[] fileBytes, String filename) {
+    public ExcelImportResult importExcel(byte[] fileBytes, String filename, boolean clearBeforeImport) {
         ByteArrayResource resource = new ByteArrayResource(fileBytes) {
             @Override
             public String getFilename() { return filename; }
@@ -23,7 +23,7 @@ public class ExcelImportClient {
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", resource);
         return restClient.post()
-                .uri("/api/v1/admin/import/excel")
+                .uri("/api/v1/admin/import/excel?clearBeforeImport={clear}", clearBeforeImport)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .body(body)
                 .retrieve()
