@@ -49,7 +49,13 @@ public class RelationshipDefinitionView extends VerticalLayout {
 
     private void configureGrid() {
         grid.setSizeFull();
-        grid.addColumn(RelationshipDefinitionDto::getName).setHeader("Name").setSortable(true);
+        grid.addComponentColumn(r -> {
+            Button link = new Button(r.getName() != null ? r.getName() : "");
+            link.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            link.getStyle().set("padding", "0").set("font-weight", "bold");
+            link.addClickListener(e -> UI.getCurrent().navigate("relationships/" + r.getId()));
+            return link;
+        }).setHeader("Name").setComparator(Comparator.comparing(r -> r.getName() != null ? r.getName() : ""));
         grid.addColumn(RelationshipDefinitionDto::getType).setHeader("Type").setSortable(true);
         grid.addComponentColumn(r -> {
             String label = r.getFromTableName() + "." + r.getFromColumnName();
