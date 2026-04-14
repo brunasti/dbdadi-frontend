@@ -18,6 +18,7 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
+import it.brunasti.dbdadi.frontend.security.SecurityUtils;
 import it.brunasti.dbdadi.frontend.client.RelationshipDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.RelationshipDefinitionDto;
 import lombok.extern.slf4j.Slf4j;
@@ -148,6 +149,7 @@ public class RelationshipDefinitionDetailView extends VerticalLayout implements 
 
         Button deleteBtn = new Button("Delete", e -> confirmDelete());
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        deleteBtn.setVisible(SecurityUtils.canEdit());
 
         add(form, new HorizontalLayout(deleteBtn));
     }
