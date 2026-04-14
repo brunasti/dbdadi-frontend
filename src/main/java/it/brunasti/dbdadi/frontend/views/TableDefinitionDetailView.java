@@ -34,6 +34,7 @@ import it.brunasti.dbdadi.frontend.client.TableDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.ColumnDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.RelationshipDefinitionDto;
+import it.brunasti.dbdadi.frontend.dto.RelationshipType;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
 import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
@@ -166,11 +167,17 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
 
         add(new Hr(), new H3("Outgoing Relationships (this table is the origin)"));
         outgoingGrid.setAllRowsVisible(true);
-        add(outgoingGrid);
+        Button newOutgoing = new Button("New Relationship (as source)", e -> openNewRelationshipDialog(true));
+        newOutgoing.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+        newOutgoing.setVisible(SecurityUtils.canEdit());
+        add(newOutgoing, outgoingGrid);
 
         add(new Hr(), new H3("Incoming Relationships (this table is the target)"));
         incomingGrid.setAllRowsVisible(true);
-        add(incomingGrid);
+        Button newIncoming = new Button("New Relationship (as target)", e -> openNewRelationshipDialog(false));
+        newIncoming.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+        newIncoming.setVisible(SecurityUtils.canEdit());
+        add(newIncoming, incomingGrid);
     }
 
     private void configureGrid() {
@@ -352,6 +359,71 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
                 columnsGrid.setItems(columnClient.findByTable(table.getId()));
                 notify("Saved successfully", false);
             } catch (Exception ex) {
+                notify("Save failed: " + ex.getMessage(), true);
+            }
+        });
+        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        dialog.add(form);
+        dialog.getFooter().add(new Button("Cancel", e -> dialog.close()), save);
+        dialog.open();
+    }
+
+    private void openNewRelationshipDialog(boolean asSource) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(asSource ? "New Relationship (as source)" : "New Relationship (as target)");
+        dialog.setWidth("600px");
+
+        java.util.List<TableDefinitionDto> tables;
+        try {
+            tables = client.findAll();
+        } catch (Exception e) {
+            tables = java.util.List.of();
+            log.warn("Could not load tables");
+        }
+
+        TextField name = new TextField("Relationship Name");
+        ComboBox<RelationshipType> type = new ComboBox<>("Type", RelationshipType.values());
+        ComboBox<TableDefinitionDto> fromTable = new ComboBox<>("From Table");
+        fromTable.setItemLabelGenerator(t -> t.getDatabaseModelName() + " / " + t.getName());
+        fromTable.setItems(tables);
+        TextField fromColumn = new TextField("From Column");
+        ComboBox<TableDefinitionDto> toTable = new ComboBox<>("To Table");
+        toTable.setItemLabelGenerator(t -> t.getDatabaseModelName() + " / " + t.getName());
+        toTable.setItems(tables);
+        TextField toColumn = new TextField("To Column");
+        TextArea description = new TextArea("Description");
+
+        if (asSource) {
+            tables.stream().filter(t -> t.getId().equals(table.getId())).findFirst().ifPresent(fromTable::setValue);
+            fromTable.setReadOnly(true);
+        } else {
+            tables.stream().filter(t -> t.getId().equals(table.getId())).findFirst().ifPresent(toTable::setValue);
+            toTable.setReadOnly(true);
+        }
+
+        FormLayout form = new FormLayout(name, type, fromTable, fromColumn, toTable, toColumn, description);
+        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 2));
+        form.setColspan(name, 2);
+        form.setColspan(description, 2);
+
+        Button save = new Button("Save", e -> {
+            try {
+                RelationshipDefinitionDto dto = RelationshipDefinitionDto.builder()
+                        .name(name.getValue())
+                        .description(description.getValue())
+                        .type(type.getValue())
+                        .fromTableId(fromTable.getValue() != null ? fromTable.getValue().getId() : null)
+                        .fromColumnName(fromColumn.getValue())
+                        .toTableId(toTable.getValue() != null ? toTable.getValue().getId() : null)
+                        .toColumnName(toColumn.getValue())
+                        .build();
+                relationshipClient.create(dto);
+                dialog.close();
+                outgoingGrid.setItems(relationshipClient.findByFromTable(table.getId()));
+                incomingGrid.setItems(relationshipClient.findByToTable(table.getId()));
+                notify("Relationship created", false);
+            } catch (Exception ex) {
+                log.error("Save failed", ex);
                 notify("Save failed: " + ex.getMessage(), true);
             }
         });

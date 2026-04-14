@@ -27,9 +27,12 @@ import it.brunasti.dbdadi.frontend.security.SecurityUtils;
 import it.brunasti.dbdadi.frontend.client.AttributeDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.ColumnDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.RelationshipDefinitionClient;
+import it.brunasti.dbdadi.frontend.client.TableDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.AttributeDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.ColumnDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.RelationshipDefinitionDto;
+import it.brunasti.dbdadi.frontend.dto.RelationshipType;
+import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Comparator;
@@ -44,6 +47,7 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
     private final ColumnDefinitionClient client;
     private final RelationshipDefinitionClient relClient;
     private final AttributeDefinitionClient attributeClient;
+    private final TableDefinitionClient tableClient;
     private ColumnDefinitionDto column;
 
     private final TextField nameField = new TextField("Name");
@@ -59,10 +63,11 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
     private final TextArea descriptionField = new TextArea("Description");
 
     public ColumnDefinitionDetailView(ColumnDefinitionClient client, RelationshipDefinitionClient relClient,
-                                       AttributeDefinitionClient attributeClient) {
+                                       AttributeDefinitionClient attributeClient, TableDefinitionClient tableClient) {
         this.client = client;
         this.relClient = relClient;
         this.attributeClient = attributeClient;
+        this.tableClient = tableClient;
         setWidthFull();
         setPadding(true);
         configureFields();
@@ -205,12 +210,88 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
         toGrid.setItems(toRels);
         toGrid.setAllRowsVisible(true);
 
+        Button newAsSource = new Button("New Relationship (as source)", e -> openNewRelationshipDialog(true));
+        newAsSource.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+        newAsSource.setVisible(SecurityUtils.canEdit());
+
+        Button newAsTarget = new Button("New Relationship (as target)", e -> openNewRelationshipDialog(false));
+        newAsTarget.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+        newAsTarget.setVisible(SecurityUtils.canEdit());
+
         VerticalLayout section = new VerticalLayout();
         section.setWidthFull();
         section.setPadding(false);
-        section.add(new H4("Relationships (as source)"), fromGrid,
-                    new H4("Relationships (as target)"), toGrid);
+        section.add(new H4("Relationships (as source)"), newAsSource, fromGrid,
+                    new H4("Relationships (as target)"), newAsTarget, toGrid);
         return section;
+    }
+
+    private void openNewRelationshipDialog(boolean asSource) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(asSource ? "New Relationship (as source)" : "New Relationship (as target)");
+        dialog.setWidth("600px");
+
+        java.util.List<TableDefinitionDto> tables;
+        try {
+            tables = tableClient.findAll();
+        } catch (Exception e) {
+            tables = java.util.List.of();
+            log.warn("Could not load tables");
+        }
+
+        TextField name = new TextField("Relationship Name");
+        ComboBox<RelationshipType> type = new ComboBox<>("Type", RelationshipType.values());
+        ComboBox<TableDefinitionDto> fromTable = new ComboBox<>("From Table");
+        fromTable.setItemLabelGenerator(t -> t.getDatabaseModelName() + " / " + t.getName());
+        fromTable.setItems(tables);
+        TextField fromColumn = new TextField("From Column");
+        ComboBox<TableDefinitionDto> toTable = new ComboBox<>("To Table");
+        toTable.setItemLabelGenerator(t -> t.getDatabaseModelName() + " / " + t.getName());
+        toTable.setItems(tables);
+        TextField toColumn = new TextField("To Column");
+        TextArea description = new TextArea("Description");
+
+        if (asSource) {
+            tables.stream().filter(t -> t.getId().equals(column.getTableId())).findFirst().ifPresent(fromTable::setValue);
+            fromTable.setReadOnly(true);
+            fromColumn.setValue(column.getName());
+            fromColumn.setReadOnly(true);
+        } else {
+            tables.stream().filter(t -> t.getId().equals(column.getTableId())).findFirst().ifPresent(toTable::setValue);
+            toTable.setReadOnly(true);
+            toColumn.setValue(column.getName());
+            toColumn.setReadOnly(true);
+        }
+
+        FormLayout form = new FormLayout(name, type, fromTable, fromColumn, toTable, toColumn, description);
+        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 2));
+        form.setColspan(name, 2);
+        form.setColspan(description, 2);
+
+        Button save = new Button("Save", e -> {
+            try {
+                RelationshipDefinitionDto dto = RelationshipDefinitionDto.builder()
+                        .name(name.getValue())
+                        .description(description.getValue())
+                        .type(type.getValue())
+                        .fromTableId(fromTable.getValue() != null ? fromTable.getValue().getId() : null)
+                        .fromColumnName(fromColumn.getValue())
+                        .toTableId(toTable.getValue() != null ? toTable.getValue().getId() : null)
+                        .toColumnName(toColumn.getValue())
+                        .build();
+                relClient.create(dto);
+                dialog.close();
+                populateFields();
+                notify("Relationship created", false);
+            } catch (Exception ex) {
+                log.error("Save failed", ex);
+                notify("Save failed: " + ex.getMessage(), true);
+            }
+        });
+        save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        dialog.add(form);
+        dialog.getFooter().add(new Button("Cancel", e -> dialog.close()), save);
+        dialog.open();
     }
 
     private void openEditDialog() {
