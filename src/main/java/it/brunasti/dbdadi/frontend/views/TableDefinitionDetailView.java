@@ -233,7 +233,16 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
             btn.addClickListener(e -> UI.getCurrent().navigate("tables/" + item.getToTableId()));
             return btn;
         }).setHeader("To Table").setComparator(Comparator.comparing(RelationshipDefinitionDto::getToTableName));
-        outgoingGrid.addColumn(RelationshipDefinitionDto::getToColumnName).setHeader("To Column").setSortable(true);
+        outgoingGrid.addComponentColumn(item -> {
+            if (item.getToColumnId() != null) {
+                Button btn = new Button(item.getToColumnName());
+                btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+                btn.getStyle().set("padding", "0");
+                btn.addClickListener(e -> UI.getCurrent().navigate("columns/" + item.getToColumnId()));
+                return btn;
+            }
+            return new com.vaadin.flow.component.html.Span(item.getToColumnName() != null ? item.getToColumnName() : "");
+        }).setHeader("To Column").setComparator(Comparator.comparing(r -> r.getToColumnName() != null ? r.getToColumnName() : ""));
         outgoingGrid.addColumn(RelationshipDefinitionDto::getDescription).setHeader("Description").setSortable(true);
 
         incomingGrid.addComponentColumn(item -> {
@@ -243,7 +252,16 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
             btn.addClickListener(e -> UI.getCurrent().navigate("tables/" + item.getFromTableId()));
             return btn;
         }).setHeader("From Table").setComparator(Comparator.comparing(RelationshipDefinitionDto::getFromTableName));
-        incomingGrid.addColumn(RelationshipDefinitionDto::getFromColumnName).setHeader("From Column").setSortable(true);
+        incomingGrid.addComponentColumn(item -> {
+            if (item.getFromColumnId() != null) {
+                Button btn = new Button(item.getFromColumnName());
+                btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+                btn.getStyle().set("padding", "0");
+                btn.addClickListener(e -> UI.getCurrent().navigate("columns/" + item.getFromColumnId()));
+                return btn;
+            }
+            return new com.vaadin.flow.component.html.Span(item.getFromColumnName() != null ? item.getFromColumnName() : "");
+        }).setHeader("From Column").setComparator(Comparator.comparing(r -> r.getFromColumnName() != null ? r.getFromColumnName() : ""));
         incomingGrid.addColumn(RelationshipDefinitionDto::getToColumnName).setHeader("To Column").setSortable(true);
         incomingGrid.addColumn(RelationshipDefinitionDto::getDescription).setHeader("Description").setSortable(true);
     }
