@@ -191,7 +191,23 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
             return btn;
         }).setHeader("Name").setComparator(Comparator.comparing(RelationshipDefinitionDto::getName));
         fromGrid.addColumn(r -> r.getType() != null ? r.getType().name() : "").setHeader("Type").setSortable(true);
-        fromGrid.addColumn(r -> r.getToTableName() + "." + r.getToColumnName()).setHeader("To").setSortable(true);
+        fromGrid.addComponentColumn(r -> {
+            Button btn = new Button(r.getToTableName() != null ? r.getToTableName() : "");
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate("tables/" + r.getToTableId()));
+            return btn;
+        }).setHeader("To Table").setComparator(Comparator.comparing(r -> r.getToTableName() != null ? r.getToTableName() : ""));
+        fromGrid.addComponentColumn(r -> {
+            if (r.getToColumnId() != null) {
+                Button btn = new Button(r.getToColumnName() != null ? r.getToColumnName() : "");
+                btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+                btn.getStyle().set("padding", "0");
+                btn.addClickListener(e -> UI.getCurrent().navigate("columns/" + r.getToColumnId()));
+                return btn;
+            }
+            return new com.vaadin.flow.component.html.Span(r.getToColumnName() != null ? r.getToColumnName() : "");
+        }).setHeader("To Column").setComparator(Comparator.comparing(r -> r.getToColumnName() != null ? r.getToColumnName() : ""));
         fromGrid.addColumn(RelationshipDefinitionDto::getDescription).setHeader("Description");
         fromGrid.setItems(fromRels);
         fromGrid.setAllRowsVisible(true);
@@ -205,7 +221,23 @@ public class ColumnDefinitionDetailView extends VerticalLayout implements Before
             return btn;
         }).setHeader("Name").setComparator(Comparator.comparing(RelationshipDefinitionDto::getName));
         toGrid.addColumn(r -> r.getType() != null ? r.getType().name() : "").setHeader("Type").setSortable(true);
-        toGrid.addColumn(r -> r.getFromTableName() + "." + r.getFromColumnName()).setHeader("From").setSortable(true);
+        toGrid.addComponentColumn(r -> {
+            Button btn = new Button(r.getFromTableName() != null ? r.getFromTableName() : "");
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate("tables/" + r.getFromTableId()));
+            return btn;
+        }).setHeader("From Table").setComparator(Comparator.comparing(r -> r.getFromTableName() != null ? r.getFromTableName() : ""));
+        toGrid.addComponentColumn(r -> {
+            if (r.getFromColumnId() != null) {
+                Button btn = new Button(r.getFromColumnName() != null ? r.getFromColumnName() : "");
+                btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+                btn.getStyle().set("padding", "0");
+                btn.addClickListener(e -> UI.getCurrent().navigate("columns/" + r.getFromColumnId()));
+                return btn;
+            }
+            return new com.vaadin.flow.component.html.Span(r.getFromColumnName() != null ? r.getFromColumnName() : "");
+        }).setHeader("From Column").setComparator(Comparator.comparing(r -> r.getFromColumnName() != null ? r.getFromColumnName() : ""));
         toGrid.addColumn(RelationshipDefinitionDto::getDescription).setHeader("Description");
         toGrid.setItems(toRels);
         toGrid.setAllRowsVisible(true);
