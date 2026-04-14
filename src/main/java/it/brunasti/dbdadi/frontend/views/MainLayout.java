@@ -12,14 +12,12 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
-import com.vaadin.flow.router.Layout;
 import com.vaadin.flow.server.VaadinServletRequest;
 import it.brunasti.dbdadi.frontend.security.SecurityUtils;
 import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 
-@Layout
 @PermitAll
 public class MainLayout extends AppLayout {
 
