@@ -26,9 +26,11 @@ import jakarta.annotation.security.RolesAllowed;
 import it.brunasti.dbdadi.frontend.client.ExcelExportClient;
 import it.brunasti.dbdadi.frontend.client.ExcelImportClient;
 import it.brunasti.dbdadi.frontend.client.JdbcImportClient;
+import it.brunasti.dbdadi.frontend.client.ResetClient;
 import it.brunasti.dbdadi.frontend.dto.ExcelImportResult;
 import it.brunasti.dbdadi.frontend.dto.JdbcImportRequest;
 import it.brunasti.dbdadi.frontend.dto.JdbcImportResult;
+import it.brunasti.dbdadi.frontend.security.SecurityUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.ByteArrayInputStream;
@@ -44,15 +46,17 @@ public class AdminView extends VerticalLayout {
     private final JdbcImportClient importClient;
     private final ExcelExportClient exportClient;
     private final ExcelImportClient excelImportClient;
+    private final ResetClient resetClient;
 
     // Result panel (hidden until JDBC import runs)
     private final VerticalLayout resultPanel = new VerticalLayout();
 
     public AdminView(JdbcImportClient importClient, ExcelExportClient exportClient,
-                     ExcelImportClient excelImportClient) {
+                     ExcelImportClient excelImportClient, ResetClient resetClient) {
         this.importClient = importClient;
         this.exportClient = exportClient;
         this.excelImportClient = excelImportClient;
+        this.resetClient = resetClient;
         setSizeFull();
         setPadding(true);
 
@@ -63,8 +67,78 @@ public class AdminView extends VerticalLayout {
         tabSheet.add("Import from JDBC", buildImportTab());
         tabSheet.add("Import from Excel", buildExcelImportTab());
         tabSheet.add("Export to Excel", buildExportTab());
+        if (SecurityUtils.isAdmin()) {
+            tabSheet.add("Reset", buildResetTab());
+        }
 
         add(tabSheet);
+    }
+
+    private VerticalLayout buildResetTab() {
+        VerticalLayout layout = new VerticalLayout();
+        layout.setPadding(false);
+        layout.setMaxWidth("700px");
+
+        layout.add(new Paragraph(
+                "These operations permanently delete data from the system. " +
+                "Use with extreme caution — deletions cannot be undone."));
+
+        // --- Reset Database information ---
+        layout.add(new H3("Database Information"));
+        layout.add(new Paragraph(
+                "Deletes all Database Models, Schemas, Tables, Columns and Relationships."));
+
+        Button resetDbBtn = new Button("Reset all Database information");
+        resetDbBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_LARGE);
+        resetDbBtn.addClickListener(e -> {
+            ConfirmDialog confirm = new ConfirmDialog(
+                    "Reset all Database information?",
+                    "This will permanently delete ALL Database Models, Schemas, Tables, Columns and Relationships. " +
+                    "This cannot be undone.",
+                    "Delete", ev -> {
+                        try {
+                            resetClient.resetDatabase();
+                            notify("All database information deleted.", false);
+                        } catch (Exception ex) {
+                            log.error("Reset database failed", ex);
+                            notify("Reset failed: " + ex.getMessage(), true);
+                        }
+                    },
+                    "Cancel", ev -> {});
+            confirm.setConfirmButtonTheme("error primary");
+            confirm.open();
+        });
+
+        layout.add(resetDbBtn, new Hr());
+
+        // --- Reset Modeling information ---
+        layout.add(new H3("Modeling Information"));
+        layout.add(new Paragraph(
+                "Deletes all Entities and Attributes."));
+
+        Button resetModelBtn = new Button("Reset all Modeling information");
+        resetModelBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_LARGE);
+        resetModelBtn.addClickListener(e -> {
+            ConfirmDialog confirm = new ConfirmDialog(
+                    "Reset all Modeling information?",
+                    "This will permanently delete ALL Entities and Attributes. " +
+                    "This cannot be undone.",
+                    "Delete", ev -> {
+                        try {
+                            resetClient.resetModeling();
+                            notify("All modeling information deleted.", false);
+                        } catch (Exception ex) {
+                            log.error("Reset modeling failed", ex);
+                            notify("Reset failed: " + ex.getMessage(), true);
+                        }
+                    },
+                    "Cancel", ev -> {});
+            confirm.setConfirmButtonTheme("error primary");
+            confirm.open();
+        });
+
+        layout.add(resetModelBtn);
+        return layout;
     }
 
     private VerticalLayout buildExportTab() {
