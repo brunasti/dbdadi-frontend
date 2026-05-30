@@ -17,7 +17,11 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import it.brunasti.dbdadi.frontend.client.AnalysisClient;
 import it.brunasti.dbdadi.frontend.client.DomainDefinitionClient;
-import it.brunasti.dbdadi.frontend.dto.*;
+import it.brunasti.dbdadi.frontend.dto.AnalysisApplyRequest;
+import it.brunasti.dbdadi.frontend.dto.AnalysisApplyResult;
+import it.brunasti.dbdadi.frontend.dto.AnalysisAttributeSuggestion;
+import it.brunasti.dbdadi.frontend.dto.AnalysisEntitySuggestion;
+import it.brunasti.dbdadi.frontend.dto.AnalysisResult;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -36,7 +40,7 @@ public class AnalysisView extends VerticalLayout {
             new Grid<>(AnalysisEntitySuggestion.class, false);
     private final Grid<AnalysisAttributeSuggestion> attributeGrid =
             new Grid<>(AnalysisAttributeSuggestion.class, false);
-    private final ComboBox<DomainDefinitionDto> domainBox = new ComboBox<>("Assign to Domain (optional)");
+    private final ComboBox<String> domainBox = new ComboBox<>("Assign to Domain (optional, created if new)");
     private final Span statsLabel = new Span();
     private final Button applyBtn = new Button("Apply Selected");
 
@@ -69,11 +73,14 @@ public class AnalysisView extends VerticalLayout {
     }
 
     private void configureDomainBox() {
-        domainBox.setItemLabelGenerator(DomainDefinitionDto::getName);
         domainBox.setClearButtonVisible(true);
-        domainBox.setWidth("260px");
+        domainBox.setAllowCustomValue(true);
+        domainBox.setWidth("300px");
+        domainBox.addCustomValueSetListener(e -> domainBox.setValue(e.getDetail()));
         try {
-            domainBox.setItems(domainClient.findAll());
+            List<String> names = domainClient.findAll().stream()
+                    .map(d -> d.getName()).toList();
+            domainBox.setItems(names);
         } catch (Exception e) {
             log.warn("Could not load domains");
         }
@@ -161,11 +168,11 @@ public class AnalysisView extends VerticalLayout {
         }
 
         try {
-            DomainDefinitionDto domain = domainBox.getValue();
+            String domainName = domainBox.getValue();
             AnalysisApplyRequest req = AnalysisApplyRequest.builder()
                     .entities(selectedEntities)
                     .attributes(selectedAttributes)
-                    .domainId(domain != null ? domain.getId() : null)
+                    .domainName(domainName != null && !domainName.isBlank() ? domainName.trim() : null)
                     .build();
 
             AnalysisApplyResult result = client.apply(req);

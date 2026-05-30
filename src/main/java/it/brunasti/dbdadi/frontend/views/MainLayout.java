@@ -72,7 +72,6 @@ public class MainLayout extends AppLayout {
     private Component createNavigation() {
         SideNav dashboardNav = new SideNav();
         dashboardNav.addItem(new SideNavItem("Dashboard", DashboardView.class, VaadinIcon.DASHBOARD.create()));
-        dashboardNav.addItem(new SideNavItem("Analysis", AnalysisView.class, VaadinIcon.MAGIC.create()));
 
         SideNav physicalNav = new SideNav();
         physicalNav.addItem(new SideNavItem("Database Models", DatabaseModelView.class, VaadinIcon.DATABASE.create()));
@@ -90,16 +89,15 @@ public class MainLayout extends AppLayout {
         wrapper.setPadding(false);
         wrapper.setSpacing(false);
 
-        if (SecurityUtils.canImportExport() || SecurityUtils.isAdmin()) {
-            SideNav adminNav = new SideNav();
-            if (SecurityUtils.canImportExport()) {
-                adminNav.addItem(new SideNavItem("Admin", AdminView.class, VaadinIcon.COGS.create()));
-            }
-            if (SecurityUtils.isAdmin()) {
-                adminNav.addItem(new SideNavItem("Users", UserManagementView.class, VaadinIcon.USERS.create()));
-            }
-            wrapper.add(new Hr(), adminNav);
+        SideNav adminNav = new SideNav();
+        adminNav.addItem(new SideNavItem("Analysis", AnalysisView.class, VaadinIcon.MAGIC.create()));
+        if (SecurityUtils.canImportExport()) {
+            adminNav.addItem(new SideNavItem("Admin", AdminView.class, VaadinIcon.COGS.create()));
         }
+        if (SecurityUtils.isAdmin()) {
+            adminNav.addItem(new SideNavItem("Users", UserManagementView.class, VaadinIcon.USERS.create()));
+        }
+        wrapper.add(new Hr(), adminNav);
 
         return wrapper;
     }
