@@ -22,6 +22,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import it.brunasti.dbdadi.frontend.security.SecurityUtils;
+import it.brunasti.dbdadi.frontend.client.ErDiagramClient;
 import it.brunasti.dbdadi.frontend.client.SchemaDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.TableDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.SchemaDefinitionDto;
@@ -37,6 +38,7 @@ public class SchemaDefinitionDetailView extends VerticalLayout implements Before
 
     private final SchemaDefinitionClient client;
     private final TableDefinitionClient tableClient;
+    private final ErDiagramClient erDiagramClient;
     private SchemaDefinitionDto schema;
 
     private final TextField nameField = new TextField("Name");
@@ -44,9 +46,11 @@ public class SchemaDefinitionDetailView extends VerticalLayout implements Before
     private final TextArea descriptionField = new TextArea("Description");
     private final Grid<TableDefinitionDto> tablesGrid = new Grid<>(TableDefinitionDto.class, false);
 
-    public SchemaDefinitionDetailView(SchemaDefinitionClient client, TableDefinitionClient tableClient) {
+    public SchemaDefinitionDetailView(SchemaDefinitionClient client, TableDefinitionClient tableClient,
+                                      ErDiagramClient erDiagramClient) {
         this.client = client;
         this.tableClient = tableClient;
+        this.erDiagramClient = erDiagramClient;
         setWidthFull();
         setPadding(true);
         configureFields();
@@ -103,8 +107,10 @@ public class SchemaDefinitionDetailView extends VerticalLayout implements Before
         Button deleteBtn = new Button("Delete", e -> confirmDelete());
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
         deleteBtn.setVisible(SecurityUtils.canEdit());
+        Button erBtn = new Button("ER Diagram", e -> openErDiagramDialog());
+        erBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
 
-        add(form, new HorizontalLayout(editBtn, deleteBtn), new Hr(), new H3("Tables"));
+        add(form, new HorizontalLayout(editBtn, deleteBtn, erBtn), new Hr(), new H3("Tables"));
         tablesGrid.setAllRowsVisible(true);
         add(createAddTableButton(), tablesGrid);
     }
@@ -201,6 +207,39 @@ public class SchemaDefinitionDetailView extends VerticalLayout implements Before
         dialog.add(form);
         dialog.getFooter().add(new Button("Cancel", e -> dialog.close()), save);
         dialog.open();
+    }
+
+    private void openErDiagramDialog() {
+        try {
+            String puml = erDiagramClient.generateForSchema(schema.getId());
+
+            Dialog dialog = new Dialog();
+            dialog.setHeaderTitle("ER Diagram — " + schema.getName());
+            dialog.setWidth("800px");
+            dialog.setHeight("600px");
+
+            TextArea area = new TextArea();
+            area.setValue(puml != null ? puml : "");
+            area.setReadOnly(true);
+            area.setSizeFull();
+            area.getStyle().set("font-family", "monospace").set("font-size", "var(--lumo-font-size-s)");
+
+            Button copyBtn = new Button("Copy to Clipboard", e -> {
+                UI.getCurrent().getPage().executeJs("navigator.clipboard.writeText($0)", area.getValue());
+                Notification.show("Copied!", 2000, Notification.Position.BOTTOM_END);
+            });
+            copyBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST, ButtonVariant.LUMO_SMALL);
+
+            VerticalLayout content = new VerticalLayout(area);
+            content.setSizeFull();
+            content.setPadding(false);
+            dialog.add(content);
+            dialog.getFooter().add(copyBtn, new Button("Close", e -> dialog.close()));
+            dialog.open();
+        } catch (Exception e) {
+            log.error("ER diagram generation failed", e);
+            notify("ER diagram generation failed: " + e.getMessage(), true);
+        }
     }
 
     private void confirmDelete() {

@@ -84,6 +84,7 @@ public class MainLayout extends AppLayout {
         logicalNav.addItem(new SideNavItem("Domains", DomainDefinitionView.class, VaadinIcon.CLUSTER.create()));
         logicalNav.addItem(new SideNavItem("Entities", EntityDefinitionView.class, VaadinIcon.CUBES.create()));
         logicalNav.addItem(new SideNavItem("Attributes", AttributeDefinitionView.class, VaadinIcon.TAG.create()));
+        logicalNav.addItem(new SideNavItem("ER Diagram", ErDiagramView.class, VaadinIcon.CHART.create()));
 
         VerticalLayout wrapper = new VerticalLayout(dashboardNav, new Hr(), physicalNav, new Hr(), logicalNav);
         wrapper.setPadding(false);
