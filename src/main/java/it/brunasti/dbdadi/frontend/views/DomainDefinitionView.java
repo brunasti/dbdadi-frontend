@@ -28,19 +28,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@Route(value = "entities", layout = MainLayout.class)
-@PageTitle("DBDaDi | Entities")
+@Route(value = "domains", layout = MainLayout.class)
+@PageTitle("DBDaDi | Domains")
 @PermitAll
 @Slf4j
-public class EntityDefinitionView extends VerticalLayout {
+public class DomainDefinitionView extends VerticalLayout {
 
-    private final EntityDefinitionClient client;
-    private final DomainDefinitionClient domainClient;
-    private final Grid<EntityDefinitionDto> grid = new Grid<>(EntityDefinitionDto.class, false);
+    private final DomainDefinitionClient client;
+    private final EntityDefinitionClient entityClient;
+    private final Grid<DomainDefinitionDto> grid = new Grid<>(DomainDefinitionDto.class, false);
 
-    public EntityDefinitionView(EntityDefinitionClient client, DomainDefinitionClient domainClient) {
+    public DomainDefinitionView(DomainDefinitionClient client, EntityDefinitionClient entityClient) {
         this.client = client;
-        this.domainClient = domainClient;
+        this.entityClient = entityClient;
         setSizeFull();
         configureGrid();
         add(createToolbar(), grid);
@@ -53,10 +53,10 @@ public class EntityDefinitionView extends VerticalLayout {
             Button btn = new Button(item.getName());
             btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
             btn.getStyle().set("padding", "0").set("font-weight", "bold");
-            btn.addClickListener(e -> UI.getCurrent().navigate("entities/" + item.getId()));
+            btn.addClickListener(e -> UI.getCurrent().navigate("domains/" + item.getId()));
             return btn;
-        }).setHeader("Name").setComparator(EntityDefinitionDto::getName);
-        grid.addColumn(EntityDefinitionDto::getDescription).setHeader("Description").setSortable(true);
+        }).setHeader("Name").setComparator(DomainDefinitionDto::getName);
+        grid.addColumn(DomainDefinitionDto::getDescription).setHeader("Description").setSortable(true);
         grid.addComponentColumn(item -> {
             Button edit = new Button("Edit", e -> openDialog(item));
             edit.addThemeVariants(ButtonVariant.LUMO_SMALL);
@@ -68,61 +68,61 @@ public class EntityDefinitionView extends VerticalLayout {
     }
 
     private HorizontalLayout createToolbar() {
-        Button addBtn = new Button("New Entity", e -> openDialog(null));
+        Button addBtn = new Button("New Domain", e -> openDialog(null));
         addBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         addBtn.setVisible(SecurityUtils.canEdit());
         Button refreshBtn = new Button("Refresh", e -> refresh());
         return new HorizontalLayout(addBtn, refreshBtn);
     }
 
-    private void openDialog(EntityDefinitionDto item) {
+    private void openDialog(DomainDefinitionDto item) {
         Dialog dialog = new Dialog();
-        dialog.setHeaderTitle(item == null ? "New Entity" : "Edit Entity");
+        dialog.setHeaderTitle(item == null ? "New Domain" : "Edit Domain");
         dialog.setWidth("560px");
 
         TextField name = new TextField("Name");
         TextArea description = new TextArea("Description");
 
-        MultiSelectComboBox<DomainDefinitionDto> domainsBox = new MultiSelectComboBox<>("Domains");
-        domainsBox.setWidthFull();
-        domainsBox.setItemLabelGenerator(DomainDefinitionDto::getName);
+        MultiSelectComboBox<EntityDefinitionDto> entitiesBox = new MultiSelectComboBox<>("Entities");
+        entitiesBox.setWidthFull();
+        entitiesBox.setItemLabelGenerator(EntityDefinitionDto::getName);
         try {
-            domainsBox.setItems(domainClient.findAll());
+            entitiesBox.setItems(entityClient.findAll());
         } catch (Exception e) {
-            log.warn("Could not load domains for selector");
+            log.warn("Could not load entities for selector");
         }
 
         if (item != null) {
             name.setValue(item.getName() != null ? item.getName() : "");
             description.setValue(item.getDescription() != null ? item.getDescription() : "");
             try {
-                List<DomainDefinitionDto> current = client.findDomains(item.getId());
-                domainsBox.setValue(Set.copyOf(current));
+                List<EntityDefinitionDto> current = client.findEntities(item.getId());
+                entitiesBox.setValue(Set.copyOf(current));
             } catch (Exception e) {
-                log.warn("Could not load current domains for entity {}", item.getId());
+                log.warn("Could not load current entities for domain {}", item.getId());
             }
         }
 
-        FormLayout form = new FormLayout(name, description, domainsBox);
+        FormLayout form = new FormLayout(name, description, entitiesBox);
         form.setColspan(description, 2);
-        form.setColspan(domainsBox, 2);
+        form.setColspan(entitiesBox, 2);
 
         Button save = new Button("Save", e -> {
             try {
-                EntityDefinitionDto dto = EntityDefinitionDto.builder()
+                DomainDefinitionDto dto = DomainDefinitionDto.builder()
                         .name(name.getValue())
                         .description(description.getValue())
                         .build();
-                EntityDefinitionDto saved;
+                DomainDefinitionDto saved;
                 if (item == null) {
                     saved = client.create(dto);
                 } else {
                     saved = client.update(item.getId(), dto);
                 }
-                List<Long> domainIds = domainsBox.getSelectedItems().stream()
-                        .map(DomainDefinitionDto::getId)
+                List<Long> entityIds = entitiesBox.getSelectedItems().stream()
+                        .map(EntityDefinitionDto::getId)
                         .collect(Collectors.toList());
-                client.setDomains(saved.getId(), domainIds);
+                client.setEntities(saved.getId(), entityIds);
                 dialog.close();
                 refresh();
                 notify("Saved successfully", false);
@@ -137,10 +137,10 @@ public class EntityDefinitionView extends VerticalLayout {
         dialog.open();
     }
 
-    private void confirmDelete(EntityDefinitionDto item) {
+    private void confirmDelete(DomainDefinitionDto item) {
         ConfirmDialog confirm = new ConfirmDialog(
-                "Delete entity \"" + item.getName() + "\"?",
-                "This action cannot be undone. Tables linked to this entity will be unlinked.",
+                "Delete domain \"" + item.getName() + "\"?",
+                "This action cannot be undone. Entity links will be removed.",
                 "Delete", e -> {
                     try {
                         client.delete(item.getId());
@@ -159,7 +159,7 @@ public class EntityDefinitionView extends VerticalLayout {
         try {
             grid.setItems(client.findAll());
         } catch (Exception e) {
-            log.error("Failed to load entities", e);
+            log.error("Failed to load domains", e);
             notify("Could not load data: " + e.getMessage(), true);
         }
     }

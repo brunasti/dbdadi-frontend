@@ -2,7 +2,6 @@ package it.brunasti.dbdadi.frontend.client;
 
 import it.brunasti.dbdadi.frontend.dto.DomainDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
-import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
@@ -12,59 +11,59 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class EntityDefinitionClient {
+public class DomainDefinitionClient {
 
-    private static final String BASE_PATH = "/api/v1/entities";
+    private static final String BASE_PATH = "/api/v1/domains";
     private final RestClient restClient;
 
-    public List<EntityDefinitionDto> findAll() {
+    public List<DomainDefinitionDto> findAll() {
         return restClient.get()
                 .uri(BASE_PATH)
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {});
     }
 
-    public EntityDefinitionDto findById(Long id) {
+    public DomainDefinitionDto findById(Long id) {
         return restClient.get()
                 .uri(BASE_PATH + "/{id}", id)
                 .retrieve()
-                .body(EntityDefinitionDto.class);
+                .body(DomainDefinitionDto.class);
     }
 
-    public List<TableDefinitionDto> findTables(Long entityId) {
+    public List<DomainDefinitionDto> findByEntity(Long entityId) {
         return restClient.get()
-                .uri("/api/v1/tables?entityId={id}", entityId)
+                .uri(BASE_PATH + "?entityId={id}", entityId)
                 .retrieve()
                 .body(new ParameterizedTypeReference<>() {});
     }
 
-    public EntityDefinitionDto create(EntityDefinitionDto dto) {
+    public List<EntityDefinitionDto> findEntities(Long domainId) {
+        return restClient.get()
+                .uri(BASE_PATH + "/{id}/entities", domainId)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+    }
+
+    public DomainDefinitionDto create(DomainDefinitionDto dto) {
         return restClient.post()
                 .uri(BASE_PATH)
                 .body(dto)
                 .retrieve()
-                .body(EntityDefinitionDto.class);
+                .body(DomainDefinitionDto.class);
     }
 
-    public EntityDefinitionDto update(Long id, EntityDefinitionDto dto) {
+    public DomainDefinitionDto update(Long id, DomainDefinitionDto dto) {
         return restClient.put()
                 .uri(BASE_PATH + "/{id}", id)
                 .body(dto)
                 .retrieve()
-                .body(EntityDefinitionDto.class);
+                .body(DomainDefinitionDto.class);
     }
 
-    public List<DomainDefinitionDto> findDomains(Long entityId) {
-        return restClient.get()
-                .uri(BASE_PATH + "/{id}/domains", entityId)
-                .retrieve()
-                .body(new ParameterizedTypeReference<>() {});
-    }
-
-    public void setDomains(Long entityId, List<Long> domainIds) {
+    public void setEntities(Long domainId, List<Long> entityIds) {
         restClient.put()
-                .uri(BASE_PATH + "/{id}/domains", entityId)
-                .body(domainIds)
+                .uri(BASE_PATH + "/{id}/entities", domainId)
+                .body(entityIds)
                 .retrieve()
                 .toBodilessEntity();
     }

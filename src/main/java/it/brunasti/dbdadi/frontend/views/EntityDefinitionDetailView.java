@@ -3,6 +3,7 @@ package it.brunasti.dbdadi.frontend.views;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
@@ -23,13 +24,18 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import it.brunasti.dbdadi.frontend.security.SecurityUtils;
 import it.brunasti.dbdadi.frontend.client.AttributeDefinitionClient;
+import it.brunasti.dbdadi.frontend.client.DomainDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.EntityDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.AttributeDefinitionDto;
+import it.brunasti.dbdadi.frontend.dto.DomainDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Route(value = "entities/:entityId", layout = MainLayout.class)
 @PageTitle("DBDaDi | Entity")
@@ -39,21 +45,26 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
 
     private final EntityDefinitionClient client;
     private final AttributeDefinitionClient attributeClient;
+    private final DomainDefinitionClient domainClient;
     private EntityDefinitionDto entity;
 
     private final TextField nameField = new TextField("Name");
     private final TextArea descriptionField = new TextArea("Description");
     private final Grid<TableDefinitionDto> tablesGrid = new Grid<>(TableDefinitionDto.class, false);
     private final Grid<AttributeDefinitionDto> attributesGrid = new Grid<>(AttributeDefinitionDto.class, false);
+    private final Grid<DomainDefinitionDto> domainsGrid = new Grid<>(DomainDefinitionDto.class, false);
 
-    public EntityDefinitionDetailView(EntityDefinitionClient client, AttributeDefinitionClient attributeClient) {
+    public EntityDefinitionDetailView(EntityDefinitionClient client, AttributeDefinitionClient attributeClient,
+                                      DomainDefinitionClient domainClient) {
         this.client = client;
         this.attributeClient = attributeClient;
+        this.domainClient = domainClient;
         setWidthFull();
         setPadding(true);
         configureFields();
         configureGrid();
         configureAttributesGrid();
+        configureDomainsGrid();
     }
 
     @Override
@@ -64,6 +75,7 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
                 populateFields();
                 tablesGrid.setItems(client.findTables(id));
                 attributesGrid.setItems(attributeClient.findByEntity(id));
+                domainsGrid.setItems(client.findDomains(id));
             } catch (Exception e) {
                 log.error("Could not load entity {}", id, e);
                 notify("Could not load entity", true);
@@ -121,23 +133,48 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
         newAttributeBtn.setVisible(SecurityUtils.canEdit());
 
         add(form, new HorizontalLayout(editBtn, deleteBtn),
+            new Hr(), new H3("Linked Domains"), domainsGrid,
             new Hr(), new H3("Linked Attributes"), newAttributeBtn, attributesGrid,
             new Hr(), new H3("Linked Tables"));
         add(tablesGrid);
     }
 
+    private void configureDomainsGrid() {
+        domainsGrid.addComponentColumn(item -> {
+            Button btn = new Button(item.getName());
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0").set("font-weight", "bold");
+            btn.addClickListener(e -> UI.getCurrent().navigate("domains/" + item.getId()));
+            return btn;
+        }).setHeader("Domain Name").setComparator(Comparator.comparing(DomainDefinitionDto::getName));
+        domainsGrid.addColumn(DomainDefinitionDto::getDescription).setHeader("Description").setSortable(true);
+        domainsGrid.setAllRowsVisible(true);
+    }
+
     private void openEditDialog() {
         Dialog dialog = new Dialog();
         dialog.setHeaderTitle("Edit Entity");
-        dialog.setWidth("500px");
+        dialog.setWidth("560px");
 
         TextField name = new TextField("Name");
         TextArea description = new TextArea("Description");
         name.setValue(entity.getName() != null ? entity.getName() : "");
         description.setValue(entity.getDescription() != null ? entity.getDescription() : "");
 
-        FormLayout form = new FormLayout(name, description);
+        MultiSelectComboBox<DomainDefinitionDto> domainsBox = new MultiSelectComboBox<>("Domains");
+        domainsBox.setWidthFull();
+        domainsBox.setItemLabelGenerator(DomainDefinitionDto::getName);
+        try {
+            domainsBox.setItems(domainClient.findAll());
+            List<DomainDefinitionDto> current = client.findDomains(entity.getId());
+            domainsBox.setValue(Set.copyOf(current));
+        } catch (Exception e) {
+            log.warn("Could not load domains for entity editor");
+        }
+
+        FormLayout form = new FormLayout(name, description, domainsBox);
         form.setColspan(description, 2);
+        form.setColspan(domainsBox, 2);
 
         Button save = new Button("Save", e -> {
             try {
@@ -146,10 +183,15 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
                         .description(description.getValue())
                         .build();
                 entity = client.update(entity.getId(), dto);
+                List<Long> domainIds = domainsBox.getSelectedItems().stream()
+                        .map(DomainDefinitionDto::getId)
+                        .collect(Collectors.toList());
+                client.setDomains(entity.getId(), domainIds);
                 dialog.close();
                 populateFields();
                 tablesGrid.setItems(client.findTables(entity.getId()));
                 attributesGrid.setItems(attributeClient.findByEntity(entity.getId()));
+                domainsGrid.setItems(client.findDomains(entity.getId()));
                 notify("Saved successfully", false);
             } catch (Exception ex) {
                 notify("Save failed: " + ex.getMessage(), true);

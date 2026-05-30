@@ -1,15 +1,18 @@
 package it.brunasti.dbdadi.frontend.views;
 
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.Hr;
 import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.server.VaadinServletRequest;
@@ -66,25 +69,38 @@ public class MainLayout extends AppLayout {
         return header;
     }
 
-    private SideNav createNavigation() {
-        SideNav nav = new SideNav();
+    private Component createNavigation() {
+        SideNav dashboardNav = new SideNav();
+        dashboardNav.addItem(new SideNavItem("Dashboard", DashboardView.class, VaadinIcon.DASHBOARD.create()));
+        dashboardNav.addItem(new SideNavItem("Analysis", AnalysisView.class, VaadinIcon.MAGIC.create()));
 
-        nav.addItem(new SideNavItem("Dashboard", DashboardView.class, VaadinIcon.DASHBOARD.create()));
-        nav.addItem(new SideNavItem("Database Models", DatabaseModelView.class, VaadinIcon.DATABASE.create()));
-        nav.addItem(new SideNavItem("Schemas", SchemaDefinitionView.class, VaadinIcon.BOOK.create()));
-        nav.addItem(new SideNavItem("Tables", TableDefinitionView.class, VaadinIcon.TABLE.create()));
-        nav.addItem(new SideNavItem("Columns", ColumnDefinitionView.class, VaadinIcon.RECORDS.create()));
-        nav.addItem(new SideNavItem("Relationships", RelationshipDefinitionView.class, VaadinIcon.CONNECT.create()));
-        nav.addItem(new SideNavItem("Entities", EntityDefinitionView.class, VaadinIcon.CUBES.create()));
-        nav.addItem(new SideNavItem("Attributes", AttributeDefinitionView.class, VaadinIcon.TAG.create()));
+        SideNav physicalNav = new SideNav();
+        physicalNav.addItem(new SideNavItem("Database Models", DatabaseModelView.class, VaadinIcon.DATABASE.create()));
+        physicalNav.addItem(new SideNavItem("Schemas", SchemaDefinitionView.class, VaadinIcon.BOOK.create()));
+        physicalNav.addItem(new SideNavItem("Tables", TableDefinitionView.class, VaadinIcon.TABLE.create()));
+        physicalNav.addItem(new SideNavItem("Columns", ColumnDefinitionView.class, VaadinIcon.RECORDS.create()));
+        physicalNav.addItem(new SideNavItem("Relationships", RelationshipDefinitionView.class, VaadinIcon.CONNECT.create()));
 
-        if (SecurityUtils.canImportExport()) {
-            nav.addItem(new SideNavItem("Admin", AdminView.class, VaadinIcon.COGS.create()));
+        SideNav logicalNav = new SideNav();
+        logicalNav.addItem(new SideNavItem("Domains", DomainDefinitionView.class, VaadinIcon.CLUSTER.create()));
+        logicalNav.addItem(new SideNavItem("Entities", EntityDefinitionView.class, VaadinIcon.CUBES.create()));
+        logicalNav.addItem(new SideNavItem("Attributes", AttributeDefinitionView.class, VaadinIcon.TAG.create()));
+
+        VerticalLayout wrapper = new VerticalLayout(dashboardNav, new Hr(), physicalNav, new Hr(), logicalNav);
+        wrapper.setPadding(false);
+        wrapper.setSpacing(false);
+
+        if (SecurityUtils.canImportExport() || SecurityUtils.isAdmin()) {
+            SideNav adminNav = new SideNav();
+            if (SecurityUtils.canImportExport()) {
+                adminNav.addItem(new SideNavItem("Admin", AdminView.class, VaadinIcon.COGS.create()));
+            }
+            if (SecurityUtils.isAdmin()) {
+                adminNav.addItem(new SideNavItem("Users", UserManagementView.class, VaadinIcon.USERS.create()));
+            }
+            wrapper.add(new Hr(), adminNav);
         }
-        if (SecurityUtils.isAdmin()) {
-            nav.addItem(new SideNavItem("Users", UserManagementView.class, VaadinIcon.USERS.create()));
-        }
 
-        return nav;
+        return wrapper;
     }
 }
