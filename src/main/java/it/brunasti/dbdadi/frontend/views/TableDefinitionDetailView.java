@@ -244,6 +244,13 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
             return new com.vaadin.flow.component.html.Span(item.getToColumnName() != null ? item.getToColumnName() : "");
         }).setHeader("To Column").setComparator(Comparator.comparing(r -> r.getToColumnName() != null ? r.getToColumnName() : ""));
         outgoingGrid.addColumn(RelationshipDefinitionDto::getDescription).setHeader("Description").setSortable(true);
+        if (SecurityUtils.canEdit()) {
+            outgoingGrid.addComponentColumn(item -> {
+                Button delete = new Button("Delete", e -> confirmDeleteRelationship(item));
+                delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
+                return delete;
+            }).setHeader("Actions").setWidth("100px").setFlexGrow(0);
+        }
 
         incomingGrid.addComponentColumn(item -> {
             Button btn = new Button(item.getFromTableName());
@@ -264,6 +271,13 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
         }).setHeader("From Column").setComparator(Comparator.comparing(r -> r.getFromColumnName() != null ? r.getFromColumnName() : ""));
         incomingGrid.addColumn(RelationshipDefinitionDto::getToColumnName).setHeader("To Column").setSortable(true);
         incomingGrid.addColumn(RelationshipDefinitionDto::getDescription).setHeader("Description").setSortable(true);
+        if (SecurityUtils.canEdit()) {
+            incomingGrid.addComponentColumn(item -> {
+                Button delete = new Button("Delete", e -> confirmDeleteRelationship(item));
+                delete.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
+                return delete;
+            }).setHeader("Actions").setWidth("100px").setFlexGrow(0);
+        }
     }
 
     private Button createAddColumnButton() {
@@ -449,6 +463,25 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
         dialog.add(form);
         dialog.getFooter().add(new Button("Cancel", e -> dialog.close()), save);
         dialog.open();
+    }
+
+    private void confirmDeleteRelationship(RelationshipDefinitionDto item) {
+        ConfirmDialog confirm = new ConfirmDialog(
+                "Delete relationship \"" + item.getName() + "\"?",
+                "This action cannot be undone.",
+                "Delete", e -> {
+                    try {
+                        relationshipClient.delete(item.getId());
+                        outgoingGrid.setItems(relationshipClient.findByFromTable(table.getId()));
+                        incomingGrid.setItems(relationshipClient.findByToTable(table.getId()));
+                        notify("Deleted", false);
+                    } catch (Exception ex) {
+                        notify("Delete failed: " + ex.getMessage(), true);
+                    }
+                },
+                "Cancel", e -> {});
+        confirm.setConfirmButtonTheme("error primary");
+        confirm.open();
     }
 
     private void confirmDelete() {
