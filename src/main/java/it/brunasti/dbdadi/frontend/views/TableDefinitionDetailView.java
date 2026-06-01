@@ -193,6 +193,15 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
             btn.addClickListener(e -> UI.getCurrent().navigate("columns/" + item.getId()));
             return btn;
         }).setHeader("Name").setComparator(Comparator.comparing(ColumnDefinitionDto::getName));
+        columnsGrid.addComponentColumn(item -> {
+            if (item.getAttributeId() == null) return new Span("");
+            Button btn = new Button(item.getAttributeName());
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate("attributes/" + item.getAttributeId()));
+            return btn;
+        }).setHeader("Attribute").setComparator(Comparator.comparing(
+                item -> item.getAttributeName() != null ? item.getAttributeName() : ""));
         columnsGrid.addColumn(ColumnDefinitionDto::getDataType).setHeader("Data Type").setSortable(true);
         columnsGrid.addColumn(ColumnDefinitionDto::getLength).setHeader("Length").setWidth("80px").setFlexGrow(0).setSortable(true);
         columnsGrid.addColumn(ColumnDefinitionDto::getPrecision).setHeader("Precision").setWidth("90px").setFlexGrow(0).setSortable(true);
