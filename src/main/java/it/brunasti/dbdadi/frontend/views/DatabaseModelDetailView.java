@@ -15,6 +15,7 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEnterEvent;
@@ -23,8 +24,11 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import it.brunasti.dbdadi.frontend.security.SecurityUtils;
+import it.brunasti.dbdadi.frontend.client.AlignmentClient;
 import it.brunasti.dbdadi.frontend.client.DatabaseModelClient;
 import it.brunasti.dbdadi.frontend.client.SchemaDefinitionClient;
+import it.brunasti.dbdadi.frontend.dto.AlignmentItem;
+import it.brunasti.dbdadi.frontend.dto.AlignmentResult;
 import it.brunasti.dbdadi.frontend.dto.DatabaseModelDto;
 import it.brunasti.dbdadi.frontend.dto.SchemaDefinitionDto;
 import java.util.Comparator;
@@ -38,6 +42,7 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
 
     private final DatabaseModelClient client;
     private final SchemaDefinitionClient schemaClient;
+    private final AlignmentClient alignmentClient;
     private DatabaseModelDto model;
 
     private final TextField nameField = new TextField("Name");
@@ -51,9 +56,11 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
     private final TextField importFlagsField = new TextField("Import Flags");
     private final Grid<SchemaDefinitionDto> schemasGrid = new Grid<>(SchemaDefinitionDto.class, false);
 
-    public DatabaseModelDetailView(DatabaseModelClient client, SchemaDefinitionClient schemaClient) {
+    public DatabaseModelDetailView(DatabaseModelClient client, SchemaDefinitionClient schemaClient,
+                                    AlignmentClient alignmentClient) {
         this.client = client;
         this.schemaClient = schemaClient;
+        this.alignmentClient = alignmentClient;
         setWidthFull();
         setPadding(true);
         configureFields();
@@ -127,7 +134,11 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
         deleteBtn.setVisible(SecurityUtils.canEdit());
 
-        add(form, new HorizontalLayout(editBtn, deleteBtn), new Hr(), new H3("Schemas"));
+        Button alignBtn = new Button("Check Alignment", e -> openAlignmentDialog());
+        alignBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
+        alignBtn.setVisible(model.getJdbcUrl() != null && !model.getJdbcUrl().isBlank());
+
+        add(form, new HorizontalLayout(editBtn, deleteBtn, alignBtn), new Hr(), new H3("Schemas"));
         schemasGrid.setAllRowsVisible(true);
         add(createAddSchemaButton(), schemasGrid);
 
@@ -281,6 +292,119 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
                 "Cancel", e -> {});
         confirm.setConfirmButtonTheme("error primary");
         confirm.open();
+    }
+
+    private void openAlignmentDialog() {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Check Alignment — " + model.getName());
+        dialog.setWidth("520px");
+
+        TextField jdbcUrlInfo = new TextField("JDBC URL");
+        jdbcUrlInfo.setValue(model.getJdbcUrl() != null ? model.getJdbcUrl() : "");
+        jdbcUrlInfo.setReadOnly(true);
+        jdbcUrlInfo.setWidthFull();
+
+        TextField usernameInfo = new TextField("Username");
+        usernameInfo.setValue(model.getUsername() != null ? model.getUsername() : "");
+        usernameInfo.setReadOnly(true);
+
+        PasswordField passwordField = new PasswordField("Password");
+        passwordField.setWidthFull();
+
+        FormLayout form = new FormLayout(jdbcUrlInfo, usernameInfo, passwordField);
+        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 2));
+        form.setColspan(jdbcUrlInfo, 2);
+        form.setColspan(passwordField, 2);
+
+        Button runBtn = new Button("Run Check", e -> {
+            dialog.close();
+            runAlignmentCheck(passwordField.getValue());
+        });
+        runBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        dialog.add(form);
+        dialog.getFooter().add(new Button("Cancel", e -> dialog.close()), runBtn);
+        dialog.open();
+    }
+
+    private void runAlignmentCheck(String password) {
+        AlignmentResult result;
+        try {
+            result = alignmentClient.check(model.getId(), password);
+        } catch (Exception e) {
+            notify("Alignment check failed: " + e.getMessage(), true);
+            return;
+        }
+
+        Dialog resultDialog = new Dialog();
+        resultDialog.setHeaderTitle("Alignment Result — " + model.getName());
+        resultDialog.setWidth("950px");
+
+        String statusText = result.isAligned()
+                ? "ALIGNED"
+                : result.getDifferences().size() + " difference(s) found";
+        String summaryText = String.format("Schemas: %d  |  Tables: %d  |  Columns: %d  |  %s",
+                result.getSchemasChecked(), result.getTablesChecked(),
+                result.getColumnsChecked(), statusText);
+        Span summarySpan = new Span(summaryText);
+        summarySpan.getStyle()
+                .set("font-weight", "bold")
+                .set("color", result.isAligned() ? "#2e7d32" : "#c62828");
+
+        VerticalLayout content = new VerticalLayout(summarySpan);
+        content.setPadding(false);
+        content.setSpacing(true);
+
+        if (!result.isAligned()) {
+            Grid<AlignmentItem> grid = new Grid<>();
+            grid.setItems(result.getDifferences());
+
+            grid.addColumn(item -> {
+                if (item.getColumnName() != null) return "COLUMN";
+                if (item.getTableName() != null) return "TABLE";
+                return "SCHEMA";
+            }).setHeader("Level").setWidth("90px").setFlexGrow(0);
+
+            grid.addColumn(AlignmentItem::getSchemaName).setHeader("Schema").setWidth("160px").setFlexGrow(0);
+
+            grid.addColumn(item -> item.getTableName() != null ? item.getTableName() : "")
+                    .setHeader("Table").setWidth("160px").setFlexGrow(0);
+
+            grid.addColumn(item -> item.getColumnName() != null ? item.getColumnName() : "")
+                    .setHeader("Column").setWidth("160px").setFlexGrow(0);
+
+            grid.addComponentColumn(item -> {
+                Span badge = new Span(item.getStatus());
+                String color = switch (item.getStatus()) {
+                    case "ADDED"   -> "#2e7d32";
+                    case "REMOVED" -> "#c62828";
+                    case "CHANGED" -> "#e65100";
+                    default        -> "#1565c0";
+                };
+                badge.getStyle()
+                        .set("background", color).set("color", "white")
+                        .set("padding", "2px 8px").set("border-radius", "4px")
+                        .set("font-size", "0.82em").set("font-weight", "bold");
+                return badge;
+            }).setHeader("Status").setWidth("100px").setFlexGrow(0);
+
+            grid.addColumn(AlignmentItem::getDetails).setHeader("Details").setAutoWidth(true);
+            grid.setAllRowsVisible(false);
+            grid.setHeight("450px");
+            content.add(grid);
+        }
+
+        if (result.getWarnings() != null && !result.getWarnings().isEmpty()) {
+            result.getWarnings().forEach(w -> {
+                Span warn = new Span("⚠ " + w);
+                warn.getStyle().set("color", "#e65100").set("font-size", "0.9em");
+                content.add(warn);
+            });
+        }
+
+        resultDialog.add(content);
+        resultDialog.getFooter().add(new Button("Close", e -> resultDialog.close()));
+        resultDialog.open();
     }
 
     private void notify(String message, boolean error) {
