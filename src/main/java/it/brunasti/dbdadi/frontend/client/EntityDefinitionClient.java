@@ -4,6 +4,9 @@ import it.brunasti.dbdadi.frontend.dto.BulkEntityRequest;
 import it.brunasti.dbdadi.frontend.dto.BulkEntityResult;
 import it.brunasti.dbdadi.frontend.dto.DomainDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
+import it.brunasti.dbdadi.frontend.dto.GenerateAttributesResult;
+import it.brunasti.dbdadi.frontend.dto.MergeEntityRequest;
+import it.brunasti.dbdadi.frontend.dto.MergeEntityResult;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
@@ -77,6 +80,21 @@ public class EntityDefinitionClient {
                 .body(request)
                 .retrieve()
                 .body(BulkEntityResult.class);
+    }
+
+    public MergeEntityResult merge(MergeEntityRequest request) {
+        return restClient.post()
+                .uri(BASE_PATH + "/merge")
+                .body(request)
+                .retrieve()
+                .body(MergeEntityResult.class);
+    }
+
+    public GenerateAttributesResult generateAttributes(Long entityId) {
+        return restClient.post()
+                .uri(BASE_PATH + "/{id}/generate-attributes", entityId)
+                .retrieve()
+                .body(GenerateAttributesResult.class);
     }
 
     public void delete(Long id) {

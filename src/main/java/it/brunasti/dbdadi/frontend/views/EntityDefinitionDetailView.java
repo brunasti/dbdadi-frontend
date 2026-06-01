@@ -29,7 +29,11 @@ import it.brunasti.dbdadi.frontend.client.EntityDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.AttributeDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.DomainDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
+import it.brunasti.dbdadi.frontend.dto.GenerateAttributesResult;
+import it.brunasti.dbdadi.frontend.dto.MergeEntityRequest;
+import it.brunasti.dbdadi.frontend.dto.MergeEntityResult;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
+import com.vaadin.flow.component.combobox.ComboBox;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Comparator;
@@ -127,14 +131,23 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
         Button deleteBtn = new Button("Delete", e -> confirmDelete());
         deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
         deleteBtn.setVisible(SecurityUtils.canEdit());
+        Button mergeBtn = new Button("Merge into…", e -> openMergeDialog());
+        mergeBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
+        mergeBtn.setVisible(SecurityUtils.canEdit());
 
         Button newAttributeBtn = new Button("New Attribute", e -> openEditAttributeDialog(null));
         newAttributeBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
         newAttributeBtn.setVisible(SecurityUtils.canEdit());
 
-        add(form, new HorizontalLayout(editBtn, deleteBtn),
+        Button generateAttributesBtn = new Button("Generate from Columns", e -> confirmGenerateAttributes());
+        generateAttributesBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST, ButtonVariant.LUMO_SMALL);
+        generateAttributesBtn.setVisible(SecurityUtils.canEdit());
+
+        HorizontalLayout attributeActions = new HorizontalLayout(newAttributeBtn, generateAttributesBtn);
+
+        add(form, new HorizontalLayout(editBtn, deleteBtn, mergeBtn),
             new Hr(), new H3("Linked Domains"), domainsGrid,
-            new Hr(), new H3("Linked Attributes"), newAttributeBtn, attributesGrid,
+            new Hr(), new H3("Linked Attributes"), attributeActions, attributesGrid,
             new Hr(), new H3("Linked Tables"));
         add(tablesGrid);
     }
@@ -276,6 +289,57 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
         }
     }
 
+    private void confirmGenerateAttributes() {
+        ConfirmDialog confirm = new ConfirmDialog(
+                "Generate attributes from columns?",
+                "For every column in tables linked to \"" + entity.getName()
+                        + "\" that has no attribute yet, an attribute will be created (or an existing one reused) "
+                        + "and linked to both the column and this entity.",
+                "Generate", e -> {
+                    try {
+                        GenerateAttributesResult result = client.generateAttributes(entity.getId());
+                        attributesGrid.setItems(attributeClient.findByEntity(entity.getId()));
+                        showGenerateResult(result);
+                    } catch (Exception ex) {
+                        notify("Generation failed: " + ex.getMessage(), true);
+                    }
+                },
+                "Cancel", e -> {});
+        confirm.open();
+    }
+
+    private void showGenerateResult(GenerateAttributesResult result) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Generate Attributes — done");
+
+        VerticalLayout content = new VerticalLayout();
+        content.setPadding(false);
+        content.add(line("Attributes created: " + result.getAttributesCreated()));
+        content.add(line("Columns linked: " + result.getColumnsLinked()));
+        content.add(line("Columns already linked (skipped): " + result.getColumnsAlreadyLinked()));
+
+        if (result.getCreatedNames() != null && !result.getCreatedNames().isEmpty()) {
+            TextArea names = new TextArea("New attribute names");
+            names.setValue(String.join("\n", result.getCreatedNames()));
+            names.setReadOnly(true);
+            names.setWidthFull();
+            names.setMinHeight("80px");
+            content.add(names);
+        }
+
+        if (result.getWarnings() != null && !result.getWarnings().isEmpty()) {
+            result.getWarnings().forEach(w -> {
+                Span warn = new Span("⚠ " + w);
+                warn.getStyle().set("color", "#e65100").set("font-size", "0.88em");
+                content.add(warn);
+            });
+        }
+
+        dialog.add(content);
+        dialog.getFooter().add(new Button("Close", e -> dialog.close()));
+        dialog.open();
+    }
+
     private void confirmDelete() {
         ConfirmDialog confirm = new ConfirmDialog(
                 "Delete entity \"" + entity.getName() + "\"?",
@@ -291,6 +355,115 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
                 "Cancel", e -> {});
         confirm.setConfirmButtonTheme("error primary");
         confirm.open();
+    }
+
+    private void openMergeDialog() {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Merge Entity — " + entity.getName());
+        dialog.setWidth("520px");
+
+        Span sourceInfo = new Span("Source (will be deleted): " + entity.getName());
+        sourceInfo.getStyle().set("font-weight", "bold").set("color", "#c62828");
+
+        ComboBox<EntityDefinitionDto> targetBox = new ComboBox<>("Merge into");
+        targetBox.setWidthFull();
+        targetBox.setItemLabelGenerator(EntityDefinitionDto::getName);
+        targetBox.setPlaceholder("Select target entity…");
+        try {
+            List<EntityDefinitionDto> all = client.findAll();
+            targetBox.setItems(all.stream()
+                    .filter(e -> !e.getId().equals(entity.getId()))
+                    .collect(Collectors.toList()));
+        } catch (Exception e) {
+            log.warn("Could not load entities for merge dialog");
+        }
+
+        Span helpText = new Span(
+                "All attributes and table links from \"" + entity.getName()
+                + "\" will be moved to the selected entity. "
+                + "Domain memberships will be merged. "
+                + "This entity will then be deleted.");
+        helpText.getStyle()
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("font-size", "0.9em");
+
+        VerticalLayout content = new VerticalLayout(sourceInfo, targetBox, helpText);
+        content.setPadding(false);
+        content.setSpacing(true);
+
+        Button runBtn = new Button("Merge", e -> {
+            EntityDefinitionDto target = targetBox.getValue();
+            if (target == null) {
+                notify("Please select a target entity", true);
+                return;
+            }
+            dialog.close();
+            confirmMerge(target);
+        });
+        runBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+
+        dialog.add(content);
+        dialog.getFooter().add(new Button("Cancel", e -> dialog.close()), runBtn);
+        dialog.open();
+    }
+
+    private void confirmMerge(EntityDefinitionDto target) {
+        ConfirmDialog confirm = new ConfirmDialog(
+                "Confirm merge",
+                "Merge \"" + entity.getName() + "\" into \"" + target.getName() + "\"? "
+                + "This will delete \"" + entity.getName() + "\" permanently.",
+                "Merge", e -> {
+                    try {
+                        MergeEntityResult result = client.merge(MergeEntityRequest.builder()
+                                .sourceEntityId(entity.getId())
+                                .targetEntityId(target.getId())
+                                .build());
+                        showMergeResult(result);
+                    } catch (Exception ex) {
+                        notify("Merge failed: " + ex.getMessage(), true);
+                    }
+                },
+                "Cancel", e -> {});
+        confirm.setConfirmButtonTheme("error primary");
+        confirm.open();
+    }
+
+    private void showMergeResult(MergeEntityResult result) {
+        Dialog resultDialog = new Dialog();
+        resultDialog.setHeaderTitle("Merge complete — " + result.getSurvivingEntityName());
+        resultDialog.setWidth("480px");
+
+        VerticalLayout content = new VerticalLayout();
+        content.setPadding(false);
+        content.setSpacing(false);
+
+        content.add(line("Attributes migrated: " + result.getAttributesMigrated()));
+        content.add(line("Tables re-linked: " + result.getTablesMigrated()));
+        content.add(line("Domain memberships merged: " + result.getDomainsMigrated()));
+
+        if (result.getWarnings() != null && !result.getWarnings().isEmpty()) {
+            result.getWarnings().forEach(w -> {
+                Span warn = new Span("⚠ " + w);
+                warn.getStyle().set("color", "#e65100").set("font-size", "0.88em");
+                content.add(warn);
+            });
+        }
+
+        Button goToTarget = new Button("Go to " + result.getSurvivingEntityName(), e -> {
+            resultDialog.close();
+            UI.getCurrent().navigate("entities/" + result.getSurvivingEntityId());
+        });
+        goToTarget.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        resultDialog.add(content);
+        resultDialog.getFooter().add(goToTarget);
+        resultDialog.open();
+    }
+
+    private Span line(String text) {
+        Span s = new Span(text);
+        s.getStyle().set("font-size", "0.95em").set("display", "block").set("padding", "2px 0");
+        return s;
     }
 
     private void notify(String message, boolean error) {

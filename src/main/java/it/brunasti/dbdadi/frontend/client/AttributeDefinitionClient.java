@@ -1,7 +1,10 @@
 package it.brunasti.dbdadi.frontend.client;
 
 import it.brunasti.dbdadi.frontend.dto.AttributeDefinitionDto;
+import it.brunasti.dbdadi.frontend.dto.AttributeEntitySuggestion;
 import it.brunasti.dbdadi.frontend.dto.ColumnDefinitionDto;
+import it.brunasti.dbdadi.frontend.dto.MergeAttributeRequest;
+import it.brunasti.dbdadi.frontend.dto.MergeAttributeResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
@@ -58,6 +61,21 @@ public class AttributeDefinitionClient {
                 .body(dto)
                 .retrieve()
                 .body(AttributeDefinitionDto.class);
+    }
+
+    public MergeAttributeResult merge(MergeAttributeRequest request) {
+        return restClient.post()
+                .uri(BASE_PATH + "/merge")
+                .body(request)
+                .retrieve()
+                .body(MergeAttributeResult.class);
+    }
+
+    public List<AttributeEntitySuggestion> suggestEntities(Long attributeId) {
+        return restClient.get()
+                .uri(BASE_PATH + "/{id}/suggested-entities", attributeId)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
     }
 
     public void delete(Long id) {
