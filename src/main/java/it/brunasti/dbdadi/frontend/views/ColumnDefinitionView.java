@@ -174,7 +174,6 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
                             List.of(String.valueOf(item.getSchemaId()))))));
             return btn;
         }).setHeader("Table").setComparator(Comparator.comparing(ColumnDefinitionDto::getTableName));
-        grid.addColumn(ColumnDefinitionDto::getOrdinalPosition).setHeader("Position").setWidth("60px").setFlexGrow(0).setSortable(true);
         grid.addComponentColumn(item -> {
             Button nameBtn = new Button(item.getName());
             nameBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
@@ -182,8 +181,18 @@ public class ColumnDefinitionView extends VerticalLayout implements BeforeEnterO
             nameBtn.addClickListener(e -> UI.getCurrent().navigate("columns/" + item.getId()));
             return nameBtn;
         }).setHeader("Column Name").setComparator(Comparator.comparing(ColumnDefinitionDto::getName));
+        grid.addComponentColumn(item -> {
+            if (item.getAttributeId() == null) return new Span("");
+            Button btn = new Button(item.getAttributeName());
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate("attributes/" + item.getAttributeId()));
+            return btn;
+        }).setHeader("Attribute").setComparator(Comparator.comparing(
+                item -> item.getAttributeName() != null ? item.getAttributeName() : ""));
         grid.addColumn(ColumnDefinitionDto::getDataType).setHeader("Data Type").setSortable(true);
         grid.addColumn(ColumnDefinitionDto::getDescription).setHeader("Description").setSortable(true);
+        grid.addColumn(ColumnDefinitionDto::getOrdinalPosition).setHeader("Position").setWidth("80px").setFlexGrow(0).setSortable(true);
         grid.addComponentColumn(col -> {
             HorizontalLayout flags = new HorizontalLayout();
             if (col.isPrimaryKey()) flags.add(VaadinIcon.KEY.create());
