@@ -21,6 +21,7 @@ public class TableDefinitionDto {
     private String databaseModelName;
     private Long entityId;
     private String entityName;
+    private Long rowCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

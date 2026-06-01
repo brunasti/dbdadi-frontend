@@ -1,5 +1,7 @@
 package it.brunasti.dbdadi.frontend.client;
 
+import it.brunasti.dbdadi.frontend.dto.BulkEntityRequest;
+import it.brunasti.dbdadi.frontend.dto.BulkEntityResult;
 import it.brunasti.dbdadi.frontend.dto.DomainDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.TableDefinitionDto;
@@ -67,6 +69,14 @@ public class EntityDefinitionClient {
                 .body(domainIds)
                 .retrieve()
                 .toBodilessEntity();
+    }
+
+    public BulkEntityResult bulkCreate(BulkEntityRequest request) {
+        return restClient.post()
+                .uri(BASE_PATH + "/bulk-create")
+                .body(request)
+                .retrieve()
+                .body(BulkEntityResult.class);
     }
 
     public void delete(Long id) {

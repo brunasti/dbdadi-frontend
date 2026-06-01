@@ -54,6 +54,7 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
     private final TextField nameField = new TextField("Name");
     private final TextField schemaField = new TextField("Schema");
     private final TextField dbModelField = new TextField("Database Model");
+    private final TextField rowCountField = new TextField("Row Count");
     private final TextArea descriptionField = new TextArea("Description");
     private final Grid<ColumnDefinitionDto> columnsGrid = new Grid<>(ColumnDefinitionDto.class, false);
     private final Grid<RelationshipDefinitionDto> outgoingGrid = new Grid<>(RelationshipDefinitionDto.class, false);
@@ -93,6 +94,7 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
         nameField.setReadOnly(true);
         schemaField.setReadOnly(true);
         dbModelField.setReadOnly(true);
+        rowCountField.setReadOnly(true);
         descriptionField.setReadOnly(true);
         descriptionField.setWidthFull();
     }
@@ -148,9 +150,11 @@ public class TableDefinitionDetailView extends VerticalLayout implements BeforeE
         nameField.setValue(table.getName() != null ? table.getName() : "");
         schemaField.setValue(table.getSchemaName() != null ? table.getSchemaName() : "");
         dbModelField.setValue(table.getDatabaseModelName() != null ? table.getDatabaseModelName() : "");
+        rowCountField.setValue(table.getRowCount() != null
+                ? String.format("%,d", table.getRowCount()) : "—");
         descriptionField.setValue(table.getDescription() != null ? table.getDescription() : "");
 
-        FormLayout form = new FormLayout(nameField, schemaField, dbModelField, entityLinkField(), descriptionField);
+        FormLayout form = new FormLayout(nameField, schemaField, dbModelField, rowCountField, entityLinkField(), descriptionField);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 3));
         form.setColspan(descriptionField, 3);
 

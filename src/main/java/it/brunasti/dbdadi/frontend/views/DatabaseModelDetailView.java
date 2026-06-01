@@ -26,10 +26,12 @@ import jakarta.annotation.security.PermitAll;
 import it.brunasti.dbdadi.frontend.security.SecurityUtils;
 import it.brunasti.dbdadi.frontend.client.AlignmentClient;
 import it.brunasti.dbdadi.frontend.client.DatabaseModelClient;
+import it.brunasti.dbdadi.frontend.client.DomainDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.SchemaDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.AlignmentItem;
 import it.brunasti.dbdadi.frontend.dto.AlignmentResult;
 import it.brunasti.dbdadi.frontend.dto.DatabaseModelDto;
+import it.brunasti.dbdadi.frontend.dto.DomainDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.SchemaDefinitionDto;
 import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +45,10 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
     private final DatabaseModelClient client;
     private final SchemaDefinitionClient schemaClient;
     private final AlignmentClient alignmentClient;
+    private final DomainDefinitionClient domainClient;
     private DatabaseModelDto model;
+
+    private final Grid<DomainDefinitionDto> domainsGrid = new Grid<>(DomainDefinitionDto.class, false);
 
     private final TextField nameField = new TextField("Name");
     private final TextField dbTypeField = new TextField("DB Type");
@@ -57,14 +62,16 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
     private final Grid<SchemaDefinitionDto> schemasGrid = new Grid<>(SchemaDefinitionDto.class, false);
 
     public DatabaseModelDetailView(DatabaseModelClient client, SchemaDefinitionClient schemaClient,
-                                    AlignmentClient alignmentClient) {
+                                    AlignmentClient alignmentClient, DomainDefinitionClient domainClient) {
         this.client = client;
         this.schemaClient = schemaClient;
         this.alignmentClient = alignmentClient;
+        this.domainClient = domainClient;
         setWidthFull();
         setPadding(true);
         configureFields();
         configureGrid();
+        configureDomainsGrid();
     }
 
     @Override
@@ -74,6 +81,7 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
                 model = client.findById(id);
                 populateFields();
                 schemasGrid.setItems(schemaClient.findByDatabaseModel(id));
+                domainsGrid.setItems(domainClient.findByDatabaseModel(id));
             } catch (Exception e) {
                 log.error("Could not load database model {}", id, e);
                 notify("Could not load database model", true);
@@ -142,6 +150,10 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
         schemasGrid.setAllRowsVisible(true);
         add(createAddSchemaButton(), schemasGrid);
 
+        add(new Hr(), new H3("Linked Domains"));
+        domainsGrid.setAllRowsVisible(true);
+        add(domainsGrid);
+
         add(new Hr(), new H4("Import Configuration"), importForm);
     }
 
@@ -163,6 +175,17 @@ public class DatabaseModelDetailView extends VerticalLayout implements BeforeEnt
                 return new HorizontalLayout(edit, delete);
             }).setHeader("Actions").setWidth("160px").setFlexGrow(0);
         }
+    }
+
+    private void configureDomainsGrid() {
+        domainsGrid.addComponentColumn(item -> {
+            Button btn = new Button(item.getName());
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0").set("font-weight", "bold");
+            btn.addClickListener(e -> UI.getCurrent().navigate("domains/" + item.getId()));
+            return btn;
+        }).setHeader("Domain Name").setComparator(Comparator.comparing(DomainDefinitionDto::getName));
+        domainsGrid.addColumn(DomainDefinitionDto::getDescription).setHeader("Description").setSortable(true);
     }
 
     private Button createAddSchemaButton() {
