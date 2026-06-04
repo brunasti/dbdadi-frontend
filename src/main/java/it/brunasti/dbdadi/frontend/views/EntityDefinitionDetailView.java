@@ -23,9 +23,11 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import it.brunasti.dbdadi.frontend.security.SecurityUtils;
+import it.brunasti.dbdadi.frontend.client.AssociationClient;
 import it.brunasti.dbdadi.frontend.client.AttributeDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.DomainDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.EntityDefinitionClient;
+import it.brunasti.dbdadi.frontend.dto.AssociationDto;
 import it.brunasti.dbdadi.frontend.dto.AttributeDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.DomainDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
@@ -50,6 +52,7 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
     private final EntityDefinitionClient client;
     private final AttributeDefinitionClient attributeClient;
     private final DomainDefinitionClient domainClient;
+    private final AssociationClient associationClient;
     private EntityDefinitionDto entity;
 
     private final TextField nameField = new TextField("Name");
@@ -57,18 +60,21 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
     private final Grid<TableDefinitionDto> tablesGrid = new Grid<>(TableDefinitionDto.class, false);
     private final Grid<AttributeDefinitionDto> attributesGrid = new Grid<>(AttributeDefinitionDto.class, false);
     private final Grid<DomainDefinitionDto> domainsGrid = new Grid<>(DomainDefinitionDto.class, false);
+    private final Grid<AssociationDto> associationsGrid = new Grid<>(AssociationDto.class, false);
 
     public EntityDefinitionDetailView(EntityDefinitionClient client, AttributeDefinitionClient attributeClient,
-                                      DomainDefinitionClient domainClient) {
+                                      DomainDefinitionClient domainClient, AssociationClient associationClient) {
         this.client = client;
         this.attributeClient = attributeClient;
         this.domainClient = domainClient;
+        this.associationClient = associationClient;
         setWidthFull();
         setPadding(true);
         configureFields();
         configureGrid();
         configureAttributesGrid();
         configureDomainsGrid();
+        configureAssociationsGrid();
     }
 
     @Override
@@ -80,6 +86,7 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
                 tablesGrid.setItems(client.findTables(id));
                 attributesGrid.setItems(attributeClient.findByEntity(id));
                 domainsGrid.setItems(client.findDomains(id));
+                associationsGrid.setItems(associationClient.findByEntity(id));
             } catch (Exception e) {
                 log.error("Could not load entity {}", id, e);
                 notify("Could not load entity", true);
@@ -148,6 +155,7 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
         add(form, new HorizontalLayout(editBtn, deleteBtn, mergeBtn),
             new Hr(), new H3("Linked Domains"), domainsGrid,
             new Hr(), new H3("Linked Attributes"), attributeActions, attributesGrid,
+            new Hr(), new H3("Associations"), associationsGrid,
             new Hr(), new H3("Linked Tables"));
         add(tablesGrid);
     }
@@ -162,6 +170,40 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
         }).setHeader("Domain Name").setComparator(Comparator.comparing(DomainDefinitionDto::getName));
         domainsGrid.addColumn(DomainDefinitionDto::getDescription).setHeader("Description").setSortable(true);
         domainsGrid.setAllRowsVisible(true);
+    }
+
+    private void configureAssociationsGrid() {
+        associationsGrid.addComponentColumn(item -> {
+            Button btn = new Button(item.getName());
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0").set("font-weight", "bold");
+            btn.addClickListener(e -> UI.getCurrent().navigate("associations/" + item.getId()));
+            return btn;
+        }).setHeader("Name").setComparator(Comparator.comparing(AssociationDto::getName));
+        associationsGrid.addComponentColumn(item -> {
+            if (item.getFromEntityId() == null) return new Span();
+            Button btn = new Button(item.getFromEntityName() != null ? item.getFromEntityName() : "");
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate("entities/" + item.getFromEntityId()));
+            return btn;
+        }).setHeader("From").setComparator(Comparator.comparing(item -> item.getFromEntityName() != null ? item.getFromEntityName() : ""));
+        associationsGrid.addComponentColumn(item -> {
+            Span badge = new Span(item.getType() != null ? item.getType().name().replace('_', ':') : "");
+            badge.getStyle().set("font-size", "0.8em").set("font-family", "monospace")
+                    .set("color", "var(--lumo-secondary-text-color)");
+            return badge;
+        }).setHeader("Type").setWidth("120px").setFlexGrow(0);
+        associationsGrid.addComponentColumn(item -> {
+            if (item.getToEntityId() == null) return new Span();
+            Button btn = new Button(item.getToEntityName() != null ? item.getToEntityName() : "");
+            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+            btn.getStyle().set("padding", "0");
+            btn.addClickListener(e -> UI.getCurrent().navigate("entities/" + item.getToEntityId()));
+            return btn;
+        }).setHeader("To").setComparator(Comparator.comparing(item -> item.getToEntityName() != null ? item.getToEntityName() : ""));
+        associationsGrid.addColumn(AssociationDto::getDescription).setHeader("Description").setSortable(true);
+        associationsGrid.setAllRowsVisible(true);
     }
 
     private void openEditDialog() {
@@ -205,6 +247,7 @@ public class EntityDefinitionDetailView extends VerticalLayout implements Before
                 tablesGrid.setItems(client.findTables(entity.getId()));
                 attributesGrid.setItems(attributeClient.findByEntity(entity.getId()));
                 domainsGrid.setItems(client.findDomains(entity.getId()));
+                associationsGrid.setItems(associationClient.findByEntity(entity.getId()));
                 notify("Saved successfully", false);
             } catch (Exception ex) {
                 notify("Save failed: " + ex.getMessage(), true);
