@@ -1,6 +1,7 @@
 package it.brunasti.dbdadi.frontend.client;
 
 import it.brunasti.dbdadi.frontend.dto.AssociationDto;
+import it.brunasti.dbdadi.frontend.dto.GenerateAssociationsResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
@@ -50,6 +51,13 @@ public class AssociationClient {
                 .body(dto)
                 .retrieve()
                 .body(AssociationDto.class);
+    }
+
+    public GenerateAssociationsResult generateFromDomain(Long domainId) {
+        return restClient.post()
+                .uri(BASE_PATH + "/generate-from-relations?domainId={id}", domainId)
+                .retrieve()
+                .body(GenerateAssociationsResult.class);
     }
 
     public void delete(Long id) {

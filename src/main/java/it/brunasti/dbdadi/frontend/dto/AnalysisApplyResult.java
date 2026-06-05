@@ -16,4 +16,6 @@ public class AnalysisApplyResult {
     private int attributesCreated;
     private int attributesReused;
     private int columnsLinked;
+    private int associationsCreated;
+    private int associationsReused;
 }

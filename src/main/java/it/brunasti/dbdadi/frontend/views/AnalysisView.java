@@ -19,6 +19,7 @@ import it.brunasti.dbdadi.frontend.client.AnalysisClient;
 import it.brunasti.dbdadi.frontend.client.DomainDefinitionClient;
 import it.brunasti.dbdadi.frontend.dto.AnalysisApplyRequest;
 import it.brunasti.dbdadi.frontend.dto.AnalysisApplyResult;
+import it.brunasti.dbdadi.frontend.dto.AnalysisAssociationSuggestion;
 import it.brunasti.dbdadi.frontend.dto.AnalysisAttributeSuggestion;
 import it.brunasti.dbdadi.frontend.dto.AnalysisEntitySuggestion;
 import it.brunasti.dbdadi.frontend.dto.AnalysisResult;
@@ -40,6 +41,8 @@ public class AnalysisView extends VerticalLayout {
             new Grid<>(AnalysisEntitySuggestion.class, false);
     private final Grid<AnalysisAttributeSuggestion> attributeGrid =
             new Grid<>(AnalysisAttributeSuggestion.class, false);
+    private final Grid<AnalysisAssociationSuggestion> associationGrid =
+            new Grid<>(AnalysisAssociationSuggestion.class, false);
     private final ComboBox<String> domainBox = new ComboBox<>("Assign to Domain (optional, created if new)");
     private final Span statsLabel = new Span();
     private final Button applyBtn = new Button("Apply Selected");
@@ -54,6 +57,7 @@ public class AnalysisView extends VerticalLayout {
 
         configureEntityGrid();
         configureAttributeGrid();
+        configureAssociationGrid();
         configureDomainBox();
 
         Button runBtn = new Button("Run Analysis");
@@ -69,7 +73,8 @@ public class AnalysisView extends VerticalLayout {
 
         add(toolbar, statsLabel,
             new Hr(), new H3("Entity Suggestions"), entityGrid,
-            new Hr(), new H3("Attribute Suggestions"), attributeGrid);
+            new Hr(), new H3("Attribute Suggestions"), attributeGrid,
+            new Hr(), new H3("Association Suggestions"), associationGrid);
     }
 
     private void configureDomainBox() {
@@ -104,6 +109,38 @@ public class AnalysisView extends VerticalLayout {
                 .setHeader("Matching Tables").setFlexGrow(1);
     }
 
+    private void configureAssociationGrid() {
+        associationGrid.setSelectionMode(Grid.SelectionMode.MULTI);
+        associationGrid.setAllRowsVisible(true);
+
+        associationGrid.addColumn(AnalysisAssociationSuggestion::getFromEntityName)
+                .setHeader("From Entity").setWidth("180px").setFlexGrow(0).setSortable(true);
+
+        associationGrid.addComponentColumn(item -> {
+            Span badge = new Span(item.getType() != null ? item.getType().name().replace('_', ':') : "");
+            badge.getStyle().set("font-family", "monospace").set("font-size", "0.8em")
+                    .set("color", "var(--lumo-secondary-text-color)");
+            return badge;
+        }).setHeader("Type").setWidth("120px").setFlexGrow(0);
+
+        associationGrid.addColumn(AnalysisAssociationSuggestion::getToEntityName)
+                .setHeader("To Entity").setWidth("180px").setFlexGrow(0).setSortable(true);
+
+        associationGrid.addColumn(AnalysisAssociationSuggestion::getSuggestedName)
+                .setHeader("Suggested Name").setWidth("220px").setFlexGrow(0).setSortable(true);
+
+        associationGrid.addComponentColumn(item -> {
+            Span badge = new Span(item.getExistingAssociationId() != null ? "Existing" : "New");
+            badge.getElement().getThemeList().add(
+                    item.getExistingAssociationId() != null ? "badge contrast" : "badge success");
+            return badge;
+        }).setHeader("Status").setWidth("110px").setFlexGrow(0);
+
+        associationGrid.addColumn(item -> item.getRelationshipLabels() != null
+                ? String.join("  |  ", item.getRelationshipLabels()) : "")
+                .setHeader("Backing Relationships").setFlexGrow(1);
+    }
+
     private void configureAttributeGrid() {
         attributeGrid.setSelectionMode(Grid.SelectionMode.MULTI);
         attributeGrid.setAllRowsVisible(true);
@@ -132,22 +169,30 @@ public class AnalysisView extends VerticalLayout {
                     lastResult.getEntitySuggestions() != null ? lastResult.getEntitySuggestions() : List.of();
             List<AnalysisAttributeSuggestion> attributes =
                     lastResult.getAttributeSuggestions() != null ? lastResult.getAttributeSuggestions() : List.of();
+            List<AnalysisAssociationSuggestion> associations =
+                    lastResult.getAssociationSuggestions() != null ? lastResult.getAssociationSuggestions() : List.of();
 
             entityGrid.setItems(entities);
             attributeGrid.setItems(attributes);
+            associationGrid.setItems(associations);
 
             // Pre-select all rows
             entityGrid.asMultiSelect().setValue(new java.util.HashSet<>(entities));
             attributeGrid.asMultiSelect().setValue(new java.util.HashSet<>(attributes));
+            // Pre-select only new associations (not existing)
+            associationGrid.asMultiSelect().setValue(associations.stream()
+                    .filter(a -> a.getExistingAssociationId() == null)
+                    .collect(java.util.stream.Collectors.toSet()));
 
             statsLabel.setText("Analysed " + lastResult.getTablesAnalyzed() + " tables and "
                     + lastResult.getColumnsAnalyzed() + " columns — found "
-                    + entities.size() + " entity suggestion(s) and "
-                    + attributes.size() + " attribute suggestion(s).");
+                    + entities.size() + " entity suggestion(s), "
+                    + attributes.size() + " attribute suggestion(s) and "
+                    + associations.size() + " association suggestion(s).");
 
-            applyBtn.setEnabled(!entities.isEmpty() || !attributes.isEmpty());
+            applyBtn.setEnabled(!entities.isEmpty() || !attributes.isEmpty() || !associations.isEmpty());
 
-            if (entities.isEmpty() && attributes.isEmpty()) {
+            if (entities.isEmpty() && attributes.isEmpty() && associations.isEmpty()) {
                 notify("No new matches found. All tables may already be linked.", false);
             }
         } catch (Exception e) {
@@ -161,8 +206,10 @@ public class AnalysisView extends VerticalLayout {
                 new ArrayList<>(entityGrid.asMultiSelect().getSelectedItems());
         List<AnalysisAttributeSuggestion> selectedAttributes =
                 new ArrayList<>(attributeGrid.asMultiSelect().getSelectedItems());
+        List<AnalysisAssociationSuggestion> selectedAssociations =
+                new ArrayList<>(associationGrid.asMultiSelect().getSelectedItems());
 
-        if (selectedEntities.isEmpty() && selectedAttributes.isEmpty()) {
+        if (selectedEntities.isEmpty() && selectedAttributes.isEmpty() && selectedAssociations.isEmpty()) {
             notify("Nothing selected — tick the checkboxes in the grids first.", false);
             return;
         }
@@ -172,6 +219,7 @@ public class AnalysisView extends VerticalLayout {
             AnalysisApplyRequest req = AnalysisApplyRequest.builder()
                     .entities(selectedEntities)
                     .attributes(selectedAttributes)
+                    .associations(selectedAssociations)
                     .domainName(domainName != null && !domainName.isBlank() ? domainName.trim() : null)
                     .build();
 
@@ -182,7 +230,9 @@ public class AnalysisView extends VerticalLayout {
                     + result.getTablesLinked() + " tables linked; "
                     + "attributes: " + result.getAttributesCreated() + " created, "
                     + result.getAttributesReused() + " reused, "
-                    + result.getColumnsLinked() + " columns linked.";
+                    + result.getColumnsLinked() + " columns linked; "
+                    + "associations: " + result.getAssociationsCreated() + " created, "
+                    + result.getAssociationsReused() + " reused.";
             notify(msg, false);
 
             // Re-run to refresh remaining unlinked items

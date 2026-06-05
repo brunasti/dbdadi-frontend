@@ -14,5 +14,6 @@ import java.util.List;
 public class AnalysisApplyRequest {
     private List<AnalysisEntitySuggestion> entities;
     private List<AnalysisAttributeSuggestion> attributes;
+    private List<AnalysisAssociationSuggestion> associations;
     private String domainName;
 }

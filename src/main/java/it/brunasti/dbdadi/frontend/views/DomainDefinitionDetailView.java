@@ -23,6 +23,7 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import it.brunasti.dbdadi.frontend.security.SecurityUtils;
+import it.brunasti.dbdadi.frontend.client.AssociationClient;
 import it.brunasti.dbdadi.frontend.client.DatabaseModelClient;
 import it.brunasti.dbdadi.frontend.client.DomainDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.EntityDefinitionClient;
@@ -31,6 +32,7 @@ import it.brunasti.dbdadi.frontend.dto.BulkEntityResult;
 import it.brunasti.dbdadi.frontend.dto.DatabaseModelDto;
 import it.brunasti.dbdadi.frontend.dto.DomainDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
+import it.brunasti.dbdadi.frontend.dto.GenerateAssociationsResult;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Comparator;
@@ -47,6 +49,7 @@ public class DomainDefinitionDetailView extends VerticalLayout implements Before
     private final DomainDefinitionClient client;
     private final EntityDefinitionClient entityClient;
     private final DatabaseModelClient dbModelClient;
+    private final AssociationClient associationClient;
     private DomainDefinitionDto domain;
 
     private final TextField nameField = new TextField("Name");
@@ -55,10 +58,11 @@ public class DomainDefinitionDetailView extends VerticalLayout implements Before
     private final Grid<DatabaseModelDto> dbModelsGrid = new Grid<>(DatabaseModelDto.class, false);
 
     public DomainDefinitionDetailView(DomainDefinitionClient client, EntityDefinitionClient entityClient,
-                                      DatabaseModelClient dbModelClient) {
+                                      DatabaseModelClient dbModelClient, AssociationClient associationClient) {
         this.client = client;
         this.entityClient = entityClient;
         this.dbModelClient = dbModelClient;
+        this.associationClient = associationClient;
         setWidthFull();
         setPadding(true);
         configureFields();
@@ -140,8 +144,11 @@ public class DomainDefinitionDetailView extends VerticalLayout implements Before
         Button bulkCreateBtn = new Button("Create Entities from Tables", e -> openBulkCreateDialog());
         bulkCreateBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
         bulkCreateBtn.setVisible(SecurityUtils.canEdit());
+        Button generateAssocBtn = new Button("Create Associations from Relations", e -> confirmGenerateAssociations());
+        generateAssocBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
+        generateAssocBtn.setVisible(SecurityUtils.canEdit());
 
-        add(form, new HorizontalLayout(editBtn, deleteBtn, bulkCreateBtn),
+        add(form, new HorizontalLayout(editBtn, deleteBtn, bulkCreateBtn, generateAssocBtn),
             new Hr(), new H3("Linked Database Models"), dbModelsGrid,
             new Hr(), new H3("Linked Entities"), entitiesGrid);
     }
@@ -287,6 +294,57 @@ public class DomainDefinitionDetailView extends VerticalLayout implements Before
 
         dialog.add(content);
         dialog.getFooter().add(new Button("Cancel", e -> dialog.close()), runBtn);
+        dialog.open();
+    }
+
+    private void confirmGenerateAssociations() {
+        ConfirmDialog confirm = new ConfirmDialog(
+                "Create Associations from Relations?",
+                "For every physical relationship between tables whose entities both belong to domain \""
+                        + domain.getName() + "\", a domain-level Association will be created if one does not already exist.",
+                "Create", e -> {
+                    try {
+                        GenerateAssociationsResult result = associationClient.generateFromDomain(domain.getId());
+                        showGenerateAssociationsResult(result);
+                    } catch (Exception ex) {
+                        notify("Failed: " + ex.getMessage(), true);
+                    }
+                },
+                "Cancel", e -> {});
+        confirm.open();
+    }
+
+    private void showGenerateAssociationsResult(GenerateAssociationsResult result) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Create Associations — Result");
+        dialog.setWidth("520px");
+
+        VerticalLayout content = new VerticalLayout();
+        content.setPadding(false);
+        content.setSpacing(false);
+
+        content.add(summary("Associations created:", result.getAssociationsCreated(), "#2e7d32"));
+        content.add(summary("Already existing (skipped):", result.getAssociationsSkipped(), "#757575"));
+
+        if (result.getCreatedNames() != null && !result.getCreatedNames().isEmpty()) {
+            TextArea names = new TextArea("Created associations");
+            names.setValue(String.join("\n", result.getCreatedNames()));
+            names.setReadOnly(true);
+            names.setWidthFull();
+            names.setHeight("160px");
+            content.add(names);
+        }
+
+        if (result.getWarnings() != null && !result.getWarnings().isEmpty()) {
+            result.getWarnings().forEach(w -> {
+                Span warn = new Span("⚠ " + w);
+                warn.getStyle().set("color", "#e65100").set("font-size", "0.9em");
+                content.add(warn);
+            });
+        }
+
+        dialog.add(content);
+        dialog.getFooter().add(new Button("Close", e -> dialog.close()));
         dialog.open();
     }
 

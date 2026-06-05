@@ -92,7 +92,9 @@ public class MainLayout extends AppLayout {
         wrapper.setSpacing(false);
 
         SideNav adminNav = new SideNav();
-        adminNav.addItem(new SideNavItem("Analysis", AnalysisView.class, VaadinIcon.MAGIC.create()));
+        if (SecurityUtils.canEdit()) {
+            adminNav.addItem(new SideNavItem("Analysis", AnalysisView.class, VaadinIcon.MAGIC.create()));
+        }
         if (SecurityUtils.canImportExport()) {
             adminNav.addItem(new SideNavItem("Admin", AdminView.class, VaadinIcon.COGS.create()));
         }
