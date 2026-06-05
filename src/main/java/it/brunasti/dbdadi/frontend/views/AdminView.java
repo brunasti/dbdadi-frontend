@@ -27,6 +27,8 @@ import it.brunasti.dbdadi.frontend.client.ExcelExportClient;
 import it.brunasti.dbdadi.frontend.client.ExcelImportClient;
 import it.brunasti.dbdadi.frontend.client.JdbcImportClient;
 import it.brunasti.dbdadi.frontend.client.ResetClient;
+import it.brunasti.dbdadi.frontend.client.SystemInfoClient;
+import it.brunasti.dbdadi.frontend.dto.SystemInfoDto;
 import it.brunasti.dbdadi.frontend.dto.ExcelImportResult;
 import it.brunasti.dbdadi.frontend.dto.JdbcImportRequest;
 import it.brunasti.dbdadi.frontend.dto.JdbcImportResult;
@@ -36,6 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 @Route(value = "admin", layout = MainLayout.class)
 @PageTitle("DBDaDi | Admin")
@@ -47,16 +50,19 @@ public class AdminView extends VerticalLayout {
     private final ExcelExportClient exportClient;
     private final ExcelImportClient excelImportClient;
     private final ResetClient resetClient;
+    private final SystemInfoClient systemInfoClient;
 
     // Result panel (hidden until JDBC import runs)
     private final VerticalLayout resultPanel = new VerticalLayout();
 
     public AdminView(JdbcImportClient importClient, ExcelExportClient exportClient,
-                     ExcelImportClient excelImportClient, ResetClient resetClient) {
+                     ExcelImportClient excelImportClient, ResetClient resetClient,
+                     SystemInfoClient systemInfoClient) {
         this.importClient = importClient;
         this.exportClient = exportClient;
         this.excelImportClient = excelImportClient;
         this.resetClient = resetClient;
+        this.systemInfoClient = systemInfoClient;
         setSizeFull();
         setPadding(true);
 
@@ -70,8 +76,90 @@ public class AdminView extends VerticalLayout {
         if (SecurityUtils.isAdmin()) {
             tabSheet.add("Reset", buildResetTab());
         }
+        tabSheet.add("System Info", buildSystemInfoTab());
 
         add(tabSheet);
+    }
+
+    private VerticalLayout buildSystemInfoTab() {
+        VerticalLayout layout = new VerticalLayout();
+        layout.setPadding(false);
+        layout.setMaxWidth("700px");
+
+        SystemInfoDto info = null;
+        try {
+            info = systemInfoClient.get();
+        } catch (Exception e) {
+            log.warn("Could not load system info", e);
+        }
+
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        // --- Application ---
+        layout.add(new H3("Application"));
+        VerticalLayout appStats = new VerticalLayout();
+        appStats.setSpacing(false);
+        appStats.setPadding(false);
+        appStats.add(stat("Version", info != null && info.getAppVersion() != null ? info.getAppVersion() : "—"));
+        appStats.add(stat("Startup time", info != null && info.getStartupTime() != null
+                ? info.getStartupTime().format(dtf) : "—"));
+        appStats.add(stat("Server time", info != null && info.getServerTime() != null
+                ? info.getServerTime().format(dtf) : "—"));
+        if (info != null && info.getUptimeSeconds() > 0) {
+            long s = info.getUptimeSeconds();
+            String uptime = String.format("%dd %02dh %02dm %02ds", s / 86400, (s % 86400) / 3600, (s % 3600) / 60, s % 60);
+            appStats.add(stat("Uptime", uptime));
+        }
+        layout.add(appStats);
+
+        layout.add(new Hr());
+
+        // --- Runtime ---
+        layout.add(new H3("Runtime"));
+        VerticalLayout runtimeStats = new VerticalLayout();
+        runtimeStats.setSpacing(false);
+        runtimeStats.setPadding(false);
+        runtimeStats.add(stat("Java version", info != null && info.getJavaVersion() != null ? info.getJavaVersion() : "—"));
+        runtimeStats.add(stat("Java vendor",  info != null && info.getJavaVendor()  != null ? info.getJavaVendor()  : "—"));
+        runtimeStats.add(stat("OS name",      info != null && info.getOsName()      != null ? info.getOsName()      : "—"));
+        runtimeStats.add(stat("OS version",   info != null && info.getOsVersion()   != null ? info.getOsVersion()   : "—"));
+        layout.add(runtimeStats);
+
+        layout.add(new Hr());
+
+        // --- Contributors ---
+        layout.add(new H3("Contributors"));
+
+        layout.add(contributor("Paolo Brunasti", "Project Owner & Lead Developer",
+                "Designed and built the DBDaDi data dictionary system."));
+        layout.add(contributor("Claude (Anthropic)", "AI Development Assistant",
+                "Assisted with architecture, code generation and feature implementation throughout the project."));
+
+        return layout;
+    }
+
+    private VerticalLayout contributor(String name, String role, String description) {
+        Span nameSpan = new Span(name);
+        nameSpan.getStyle().set("font-weight", "bold").set("font-size", "var(--lumo-font-size-m)");
+
+        Span roleSpan = new Span(role);
+        roleSpan.getStyle()
+                .set("color", "var(--lumo-primary-color)")
+                .set("font-size", "var(--lumo-font-size-s)");
+
+        Span descSpan = new Span(description);
+        descSpan.getStyle()
+                .set("color", "var(--lumo-secondary-text-color)")
+                .set("font-size", "var(--lumo-font-size-s)");
+
+        VerticalLayout card = new VerticalLayout(nameSpan, roleSpan, descSpan);
+        card.setSpacing(false);
+        card.setPadding(true);
+        card.getStyle()
+                .set("border", "1px solid var(--lumo-contrast-20pct)")
+                .set("border-radius", "var(--lumo-border-radius-m)")
+                .set("margin-bottom", "var(--lumo-space-s)");
+        return card;
     }
 
     private VerticalLayout buildResetTab() {
