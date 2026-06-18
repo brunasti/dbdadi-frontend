@@ -27,12 +27,14 @@ import it.brunasti.dbdadi.frontend.client.AssociationClient;
 import it.brunasti.dbdadi.frontend.client.DatabaseModelClient;
 import it.brunasti.dbdadi.frontend.client.DomainDefinitionClient;
 import it.brunasti.dbdadi.frontend.client.EntityDefinitionClient;
+import it.brunasti.dbdadi.frontend.client.ErDiagramClient;
 import it.brunasti.dbdadi.frontend.dto.BulkEntityRequest;
 import it.brunasti.dbdadi.frontend.dto.BulkEntityResult;
 import it.brunasti.dbdadi.frontend.dto.DatabaseModelDto;
 import it.brunasti.dbdadi.frontend.dto.DomainDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.GenerateAssociationsResult;
+import it.brunasti.dbdadi.frontend.dto.GenerateAttributesResult;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Comparator;
@@ -50,6 +52,7 @@ public class DomainDefinitionDetailView extends VerticalLayout implements Before
     private final EntityDefinitionClient entityClient;
     private final DatabaseModelClient dbModelClient;
     private final AssociationClient associationClient;
+    private final ErDiagramClient erDiagramClient;
     private DomainDefinitionDto domain;
 
     private final TextField nameField = new TextField("Name");
@@ -58,11 +61,13 @@ public class DomainDefinitionDetailView extends VerticalLayout implements Before
     private final Grid<DatabaseModelDto> dbModelsGrid = new Grid<>(DatabaseModelDto.class, false);
 
     public DomainDefinitionDetailView(DomainDefinitionClient client, EntityDefinitionClient entityClient,
-                                      DatabaseModelClient dbModelClient, AssociationClient associationClient) {
+                                      DatabaseModelClient dbModelClient, AssociationClient associationClient,
+                                      ErDiagramClient erDiagramClient) {
         this.client = client;
         this.entityClient = entityClient;
         this.dbModelClient = dbModelClient;
         this.associationClient = associationClient;
+        this.erDiagramClient = erDiagramClient;
         setWidthFull();
         setPadding(true);
         configureFields();
@@ -147,8 +152,13 @@ public class DomainDefinitionDetailView extends VerticalLayout implements Before
         Button generateAssocBtn = new Button("Create Associations from Relations", e -> confirmGenerateAssociations());
         generateAssocBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
         generateAssocBtn.setVisible(SecurityUtils.canEdit());
+        Button generateAttrsBtn = new Button("Create Attributes from Columns", e -> confirmGenerateAttributes());
+        generateAttrsBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
+        generateAttrsBtn.setVisible(SecurityUtils.canEdit());
+        Button erDiagramBtn = new Button("ER Diagram", e -> openErDiagramDialog());
+        erDiagramBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
 
-        add(form, new HorizontalLayout(editBtn, deleteBtn, bulkCreateBtn, generateAssocBtn),
+        add(form, new HorizontalLayout(editBtn, deleteBtn, bulkCreateBtn, generateAssocBtn, generateAttrsBtn, erDiagramBtn),
             new Hr(), new H3("Linked Database Models"), dbModelsGrid,
             new Hr(), new H3("Linked Entities"), entitiesGrid);
     }
@@ -328,6 +338,95 @@ public class DomainDefinitionDetailView extends VerticalLayout implements Before
 
         if (result.getCreatedNames() != null && !result.getCreatedNames().isEmpty()) {
             TextArea names = new TextArea("Created associations");
+            names.setValue(String.join("\n", result.getCreatedNames()));
+            names.setReadOnly(true);
+            names.setWidthFull();
+            names.setHeight("160px");
+            content.add(names);
+        }
+
+        if (result.getWarnings() != null && !result.getWarnings().isEmpty()) {
+            result.getWarnings().forEach(w -> {
+                Span warn = new Span("⚠ " + w);
+                warn.getStyle().set("color", "#e65100").set("font-size", "0.9em");
+                content.add(warn);
+            });
+        }
+
+        dialog.add(content);
+        dialog.getFooter().add(new Button("Close", e -> dialog.close()));
+        dialog.open();
+    }
+
+    private void openErDiagramDialog() {
+        String plantuml;
+        try {
+            plantuml = erDiagramClient.generate(domain.getId());
+        } catch (Exception e) {
+            notify("ER diagram generation failed: " + e.getMessage(), true);
+            return;
+        }
+
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("ER Diagram — " + domain.getName());
+        dialog.setWidth("800px");
+        dialog.setHeight("600px");
+
+        TextArea area = new TextArea();
+        area.setValue(plantuml != null ? plantuml : "");
+        area.setReadOnly(true);
+        area.setSizeFull();
+        area.getStyle().set("font-family", "monospace").set("font-size", "var(--lumo-font-size-s)");
+
+        VerticalLayout content = new VerticalLayout(area);
+        content.setSizeFull();
+        content.setPadding(false);
+        dialog.add(content);
+
+        Button copyBtn = new Button("Copy to Clipboard", e -> {
+            UI.getCurrent().getPage().executeJs("navigator.clipboard.writeText($0)", area.getValue());
+            Notification.show("Copied!", 2000, Notification.Position.BOTTOM_END);
+        });
+        copyBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
+
+        dialog.getFooter().add(new Button("Close", e -> dialog.close()), copyBtn);
+        dialog.open();
+    }
+
+    private void confirmGenerateAttributes() {
+        ConfirmDialog confirm = new ConfirmDialog(
+                "Create Attributes from Columns?",
+                "For every column in tables linked to entities of domain \""
+                        + domain.getName() + "\" that has no attribute yet, an attribute will be "
+                        + "created (or an existing one reused) and linked to both the column and its entity.",
+                "Create", e -> {
+                    try {
+                        GenerateAttributesResult result = client.generateAttributes(domain.getId());
+                        entitiesGrid.setItems(client.findEntities(domain.getId()));
+                        showGenerateAttributesResult(result);
+                    } catch (Exception ex) {
+                        notify("Failed: " + ex.getMessage(), true);
+                    }
+                },
+                "Cancel", e -> {});
+        confirm.open();
+    }
+
+    private void showGenerateAttributesResult(GenerateAttributesResult result) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle("Create Attributes — Result");
+        dialog.setWidth("520px");
+
+        VerticalLayout content = new VerticalLayout();
+        content.setPadding(false);
+        content.setSpacing(false);
+
+        content.add(summary("Attributes created:", result.getAttributesCreated(), "#2e7d32"));
+        content.add(summary("Columns linked:", result.getColumnsLinked(), "#2e7d32"));
+        content.add(summary("Columns already linked (skipped):", result.getColumnsAlreadyLinked(), "#757575"));
+
+        if (result.getCreatedNames() != null && !result.getCreatedNames().isEmpty()) {
+            TextArea names = new TextArea("Created attributes");
             names.setValue(String.join("\n", result.getCreatedNames()));
             names.setReadOnly(true);
             names.setWidthFull();

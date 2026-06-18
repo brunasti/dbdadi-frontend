@@ -3,6 +3,7 @@ package it.brunasti.dbdadi.frontend.client;
 import it.brunasti.dbdadi.frontend.dto.DatabaseModelDto;
 import it.brunasti.dbdadi.frontend.dto.DomainDefinitionDto;
 import it.brunasti.dbdadi.frontend.dto.EntityDefinitionDto;
+import it.brunasti.dbdadi.frontend.dto.GenerateAttributesResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
@@ -89,6 +90,13 @@ public class DomainDefinitionClient {
                 .body(entityIds)
                 .retrieve()
                 .toBodilessEntity();
+    }
+
+    public GenerateAttributesResult generateAttributes(Long domainId) {
+        return restClient.post()
+                .uri(BASE_PATH + "/{id}/generate-attributes", domainId)
+                .retrieve()
+                .body(GenerateAttributesResult.class);
     }
 
     public void delete(Long id) {
