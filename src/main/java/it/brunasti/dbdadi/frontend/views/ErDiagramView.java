@@ -4,6 +4,8 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.dialog.Dialog;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -53,7 +55,25 @@ public class ErDiagramView extends VerticalLayout {
         });
         copyBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
 
-        HorizontalLayout toolbar = new HorizontalLayout(domainBox, generateBtn, copyBtn);
+        Button renderBtn = new Button("View Rendering", e -> {
+            if (outputArea.getValue().isBlank()) {
+                Notification n = Notification.show("Generate a diagram first", 2000, Notification.Position.BOTTOM_END);
+                n.addThemeVariants(NotificationVariant.LUMO_CONTRAST);
+                return;
+            }
+            try {
+                DomainDefinitionDto selected = domainBox.getValue();
+                String svg = client.generateSvg(selected != null ? selected.getId() : null);
+                openSvgDialog("ER Diagram", svg);
+            } catch (Exception ex) {
+                log.error("SVG rendering failed", ex);
+                Notification n = Notification.show("Rendering failed: " + ex.getMessage(), 4000, Notification.Position.BOTTOM_END);
+                n.addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        renderBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
+
+        HorizontalLayout toolbar = new HorizontalLayout(domainBox, generateBtn, copyBtn, renderBtn);
         toolbar.setAlignItems(Alignment.END);
 
         outputArea.setSizeFull();
@@ -62,6 +82,25 @@ public class ErDiagramView extends VerticalLayout {
 
         add(toolbar, outputArea);
         setFlexGrow(1, outputArea);
+    }
+
+    private void openSvgDialog(String title, String svgContent) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(title);
+        dialog.setWidth("900px");
+        dialog.setMaxHeight("85vh");
+
+        Div svgWrapper = new Div();
+        svgWrapper.getElement().setProperty("innerHTML", svgContent);
+        svgWrapper.setWidthFull();
+        svgWrapper.getStyle().set("overflow", "auto").set("display", "block");
+
+        VerticalLayout content = new VerticalLayout(svgWrapper);
+        content.setSizeFull();
+        content.setPadding(false);
+        dialog.add(content);
+        dialog.getFooter().add(new Button("Close", e -> dialog.close()));
+        dialog.open();
     }
 
     private void generate() {

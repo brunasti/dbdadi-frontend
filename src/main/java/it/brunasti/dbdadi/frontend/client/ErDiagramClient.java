@@ -24,10 +24,30 @@ public class ErDiagramClient {
                 .body(String.class);
     }
 
+    public String generateSvg(Long domainId) {
+        return restClient.get()
+                .uri(b -> {
+                    var u = b.path(BASE_PATH + "/svg");
+                    if (domainId != null) u = u.queryParam("domainId", domainId);
+                    return u.build();
+                })
+                .accept(MediaType.parseMediaType("image/svg+xml"))
+                .retrieve()
+                .body(String.class);
+    }
+
     public String generateForSchema(Long schemaId) {
         return restClient.get()
                 .uri(BASE_PATH + "/schema/{id}", schemaId)
                 .accept(MediaType.TEXT_PLAIN)
+                .retrieve()
+                .body(String.class);
+    }
+
+    public String generateSvgForSchema(Long schemaId) {
+        return restClient.get()
+                .uri(BASE_PATH + "/schema/{id}/svg", schemaId)
+                .accept(MediaType.parseMediaType("image/svg+xml"))
                 .retrieve()
                 .body(String.class);
     }

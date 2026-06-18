@@ -8,6 +8,7 @@ import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Hr;
 import com.vaadin.flow.component.html.Span;
@@ -389,7 +390,36 @@ public class DomainDefinitionDetailView extends VerticalLayout implements Before
         });
         copyBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
 
-        dialog.getFooter().add(new Button("Close", e -> dialog.close()), copyBtn);
+        Button renderBtn = new Button("View Rendering", e -> {
+            try {
+                String svg = erDiagramClient.generateSvg(domain.getId());
+                openSvgDialog("ER Diagram — " + domain.getName(), svg);
+            } catch (Exception ex) {
+                notify("Rendering failed: " + ex.getMessage(), true);
+            }
+        });
+        renderBtn.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
+
+        dialog.getFooter().add(copyBtn, renderBtn, new Button("Close", e -> dialog.close()));
+        dialog.open();
+    }
+
+    private void openSvgDialog(String title, String svgContent) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(title);
+        dialog.setWidth("900px");
+        dialog.setMaxHeight("85vh");
+
+        Div svgWrapper = new Div();
+        svgWrapper.getElement().setProperty("innerHTML", svgContent);
+        svgWrapper.setWidthFull();
+        svgWrapper.getStyle().set("overflow", "auto").set("display", "block");
+
+        VerticalLayout content = new VerticalLayout(svgWrapper);
+        content.setSizeFull();
+        content.setPadding(false);
+        dialog.add(content);
+        dialog.getFooter().add(new Button("Close", e -> dialog.close()));
         dialog.open();
     }
 
